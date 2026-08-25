@@ -70,7 +70,7 @@ A complete species addon is about sixty lines of Lua — no route data, no map
 analysis, no generator. If what you want to spawn isn't an animal, the
 population model is generic and public. **[API.md](API.md)** documents the whole
 contract; a fully commented example lives in
-[examples/KnoxWildlifeOpossum](examples/KnoxWildlifeOpossum).
+[examples/KnoxLifeOpossum](examples/KnoxLifeOpossum).
 
 ## Installing
 

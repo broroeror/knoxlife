@@ -1,0 +1,6 @@
+name=Knox Life: Opossums (example)
+id=KnoxLifeOpossum
+description=Example addon for the Knox Life API: registers a complete new species in about sixty lines. Ships no model, so it will not spawn anything visible until opossum art exists - it is here to be copied, not subscribed to.
+require=KnoxLife
+modversion=0.1.0
+versionMin=42.16

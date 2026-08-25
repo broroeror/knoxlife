@@ -1,6 +1,0 @@
-name=Knox Wildlife: Opossums (example)
-id=KnoxWildlifeOpossum
-description=Example addon for the Knox Wildlife API: registers a complete new species in about sixty lines. Ships no model, so it will not spawn anything visible until opossum art exists - it is here to be copied, not subscribed to.
-require=KnoxWildlife
-modversion=0.1.0
-versionMin=42.16

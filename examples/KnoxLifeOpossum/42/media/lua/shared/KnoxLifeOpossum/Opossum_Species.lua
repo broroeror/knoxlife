@@ -13,13 +13,13 @@
 -- Fail politely rather than erroring if the framework is missing or too old.
 -- mod.info's `require=KnoxLife` should prevent this, but a user can always
 -- disable the base mod and leave the addon enabled.
-if not KnoxWildlife or (KnoxWildlife.API_VERSION or 0) < 1 then
-    print("[KnoxWildlifeOpossum] Knox Life not found (or too old); "
+if not KnoxLife or (KnoxLife.API_VERSION or 0) < 1 then
+    print("[KnoxLifeOpossum] Knox Life not found (or too old); "
         .. "this addon needs API_VERSION 1. Not loading.")
     return
 end
 
-local KW = KnoxWildlife
+local KW = KnoxLife
 
 KW.registerSpecies("opossum", {
     -- Animal type names, as defined in AnimalDefinitions. Your art mod supplies
@@ -64,4 +64,4 @@ KW.registerSpecies("opossum", {
 -- modest share: opossums are common but the bucket is crowded.
 KW.addToBucket("small", "opossum", 25)
 
-print("[KnoxWildlifeOpossum] registered opossum (API v" .. KW.API_VERSION .. ")")
+print("[KnoxLifeOpossum] registered opossum (API v" .. KW.API_VERSION .. ")")

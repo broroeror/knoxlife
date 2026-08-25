@@ -17,7 +17,7 @@ writes into Project Zomboid's animal system and won't serve you, but the
 population model underneath is generic and public.
 
 A complete species addon is about sixty lines of Lua. A fully commented one
-lives in [`examples/KnoxWildlifeOpossum`](examples/KnoxWildlifeOpossum); a
+lives in [`examples/KnoxLifeOpossum`](examples/KnoxLifeOpossum); a
 shipping one with art is the
 [fox addon](https://github.com/broroeror/knox-wildlife-fox).
 
