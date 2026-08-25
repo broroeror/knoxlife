@@ -1,4 +1,4 @@
--- Knox Wildlife -- shared setup, settings and logging.
+-- Knox Life -- shared setup, settings and logging.
 --
 -- Everything this mod does is a patch applied on top of the vanilla tables. We
 -- deliberately never ship a file at a vanilla path: replacing, say,
@@ -6,10 +6,6 @@
 -- mods collide with each other and with future game patches.
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 KW.VERSION = "0.2.0"
@@ -105,12 +101,66 @@ end
 
 -- Enum options come back as 1-based integers. Clamp before indexing so a bad
 -- config value degrades to the default instead of erroring.
+-- PREVIEW OVERRIDE.
+--
+-- KW.preview, when set, is a table of { OptionName = index } that stands in for
+-- the sandbox for the duration of one calculation. It exists so the in-game
+-- planner can ask "what would THESE settings give?" without a second copy of the
+-- population maths -- every formula below already routes through this function,
+-- so overriding here moves the whole model at once.
+--
+-- Never left set: KW.withPreview is the only supported way in, and it clears on
+-- the way out even if the body errors. A stuck preview would silently detune a
+-- live world, which is exactly the class of bug this repo keeps finding.
+KW.preview = nil
+
+--- Run fn() as though the sandbox held `settings`. Passes through ALL results.
+--
+-- All of them, not just the first: KW.scaledGroupOf returns three values, and a
+-- single-result wrapper would silently hand back min with max and maxMale as
+-- nil. Nested calls restore the outer preview rather than clearing to live.
+function KW.withPreview(settings, fn)
+    local saved = KW.preview
+    KW.preview = settings
+    local res = table.pack(pcall(fn))
+    KW.preview = saved
+    if not res[1] then
+        KW.log("preview failed: " .. tostring(res[2]))
+        return nil
+    end
+    return table.unpack(res, 2, res.n)
+end
+
 function KW.pickFromScale(scale, name, defaultIndex)
-    local i = KW.getOption(name, defaultIndex)
+    local i = KW.preview and KW.preview[name] or KW.getOption(name, defaultIndex)
     i = math.floor(tonumber(i) or defaultIndex)
     if i < 1 then i = 1 end
     if i > #scale then i = #scale end
     return scale[i]
+end
+
+--- May this player reach the admin/debug tools?
+--
+-- Lifted out of KW_Locator so KW_AdminMenu cannot disagree with it. They did:
+-- the locator showed while the admin menu did not, on the same server, for the
+-- same player -- because the locator had already been fixed and the admin menu
+-- still called isAdmin().
+--
+-- isAdmin() is a Java-exposed global with no Lua definition to read, and this
+-- repo has been burned by it once already: a file-local isAdmin(player) shadowed
+-- the zero-arg global, so it returned false for every real admin and the menu
+-- was quietly debug-only on MP. getAccessLevel() is a string and says what it
+-- means, so read that instead and never mind isAdmin().
+function KW.mayUseAdminTools()
+    if isDebugEnabled and isDebugEnabled() then return true end
+    if isClient and isClient() then
+        local lvl = string.lower(tostring(getAccessLevel and getAccessLevel() or ""))
+        return lvl == "admin" or lvl == "moderator"
+    end
+    -- Singleplayer or the coop host. Permissive fallback: an existing save has no
+    -- stored value for an option that did not exist when it was created.
+    if not KW.getOption then return true end
+    return KW.getOption("AdminTools", true) and true or false
 end
 
 --- How real this world is, as a fraction. 1.0 is true 1993 Kentucky density.
@@ -129,8 +179,35 @@ end
 -- is the table the sandbox Group Size setting has already scaled. minAnimal and
 -- maxAnimal count FEMALES; males and babies are added on top, which is the trap
 -- documented in KW_Groups.lua and the reason a "max 5" deer group is eleven.
+--- Family size for `def` under the CURRENT dials (or the previewed ones).
+--
+-- Extracted from KW_Groups so the planner and the live spawner cannot disagree.
+-- Returns min, max, maxMale, with the two invariants the spawner assumes:
+-- max >= min, and never more males than females.
+function KW.scaledGroupOf(id, def)
+    local own = KW.groupScaleFor(id)
+    local mn = KW.scaleCount((tonumber(def.minAnimal) or 1) * own, 1)
+    local mx = KW.scaleCount((tonumber(def.maxAnimal) or mn) * own, mn)
+    if mx < mn then mx = mn end
+    local ml = KW.scaleCount((tonumber(def.maxMale) or 1) * own, 1)
+    if ml > mx then ml = mx end
+    return mn, mx, ml
+end
+
 function KW.meanGroupSize(species)
     local g = MigrationGroupDefinitions and MigrationGroupDefinitions[species]
+    -- Under preview, MigrationGroupDefinitions is the wrong source: it was
+    -- scaled by the dials the world is ACTUALLY running, not the ones being
+    -- previewed. Recompute from the registered def instead, through the same
+    -- scaling the spawner uses.
+    if KW.preview then
+        local def = KW.species and KW.species[species]
+        if def then
+            local mn, mx, ml = KW.scaledGroupOf(species, def)
+            g = { minAnimal = mn, maxAnimal = mx, maxMale = ml,
+                  babyChance = def.babyChance }
+        end
+    end
     if not g then return 0 end
     local lo = tonumber(g.minAnimal) or 1
     local hi = tonumber(g.maxAnimal) or lo
@@ -207,7 +284,7 @@ end
 -- NOT ship route data, touch the generator, or care where the forests are --
 -- it registers a species and a weight and inherits every route on the map.
 --
--- Declare `require=KnoxWildlife` in the addon's mod.info. That guarantees this
+-- Declare `require=KnoxLife` in the addon's mod.info. That guarantees this
 -- file loads first, so the functions exist by the time the addon's own files
 -- run, and the registrations land before anything is applied to the game.
 -- ---------------------------------------------------------------------------
@@ -314,13 +391,13 @@ end
 -- under its own mod id. So a dotted name is read from there instead:
 --
 --     enabledOption = "Fox"                        SandboxVars.KnoxLife.Fox
---     enabledOption = "KnoxWildlifeCritters.Fox"   its own page
+--     enabledOption = "KnoxLifeFoxes.Fox"   its own page
 --
 -- Plain names keep working, so nothing written against API 1 changes.
 --- Read a sandbox option that may live on another mod's page.
 --
 --     "WildTurkey"                  -> SandboxVars.KnoxLife.WildTurkey
---     "KnoxWildlifeFox.FoxRoutes"   -> SandboxVars.KnoxWildlifeFox.FoxRoutes
+--     "KnoxLifeFoxes.FoxRoutes"     -> SandboxVars.KnoxLifeFoxes.FoxRoutes
 --
 -- The dotted form is what lets a species mod keep its settings on its own page
 -- instead of cluttering ours, which matters now that every creature is a mod.

@@ -1,4 +1,4 @@
--- Knox Wildlife -- migration groups.
+-- Knox Life -- migration groups.
 --
 -- A migration group is one family unit that walks a route. minAnimal/maxAnimal
 -- count FEMALES only; males and babies are added on top of that range, which is
@@ -11,10 +11,6 @@
 -- vanilla deer, because there is only one path.
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 -- Timings and trace chances shared by every group unless it overrides them.
@@ -182,13 +178,7 @@ local function applySpecies(id, def)
     -- max >= min, and never more males than females.
     -- Global Group Size, then this species' own multiplier, so an admin can
     -- thin the rabbits without touching the deer.
-    local own = KW.groupScaleFor(id)
-    g.minAnimal = KW.scaleCount(def.minAnimal * own, 1)
-    g.maxAnimal = KW.scaleCount(def.maxAnimal * own, g.minAnimal)
-    if g.maxAnimal < g.minAnimal then g.maxAnimal = g.minAnimal end
-
-    g.maxMale = KW.scaleCount(def.maxMale * own, 1)
-    if g.maxMale > g.maxAnimal then g.maxMale = g.maxAnimal end
+    g.minAnimal, g.maxAnimal, g.maxMale = KW.scaledGroupOf(id, def)
 
     g.babyChance = def.babyChance
 

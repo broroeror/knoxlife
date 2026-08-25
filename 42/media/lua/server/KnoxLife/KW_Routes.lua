@@ -1,4 +1,4 @@
--- Knox Wildlife -- migration route registration.
+-- Knox Life -- migration route registration.
 --
 -- This is the part that actually fixes the problem. Wild herds spawn along
 -- "Animal" zones hand-placed in the map data, and the base map carries twenty
@@ -30,10 +30,6 @@
 -- convergence is a second, quieter cause of the blobs.
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 local ZONE_TYPE = "Animal"

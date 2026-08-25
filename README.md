@@ -1,11 +1,11 @@
-# Knox Wildlife
+# KnoxLife
 
 Wild-animal spawning for Project Zomboid (build 42), tuned to 1990s rural
 Kentucky: many small family groups spread across the map, instead of a few
 enormous herds.
 
 The vanilla map ships only 20 migration routes, so its animals pile into a
-handful of oversized herds you either trip over or never find. Knox Wildlife
+handful of oversized herds you either trip over or never find. KnoxLife
 bakes hundreds of routes from the game's own biome maps and places each species
 at its actual recorded 1993 density — about a thousand deer at 11.4 per square
 mile, roughly 890 raccoons, turkey flocks at the peak of Kentucky's restoration
@@ -24,19 +24,19 @@ mile, roughly 890 raccoons, turkey flocks at the peak of Kentucky's restoration
 - **Farm rebalance.** Cattle on roughly half of farms in real cow-calf herds,
   sheep genuinely rare, the way 1990s Kentucky actually looked.
 - **Admin and testing tools.** A right-click locator that points at the nearest
-  animal of any species, and a Knox Wildlife section in the debug menu with a
+  animal of any species, and a KnoxLife section in the debug menu with a
   population report of what actually got placed.
 
 ## The family
 
 | Mod | What it adds |
 |---|---|
-| **Knox Wildlife** (this repo) | the framework, densities, recovery, farms, turkeys, raccoons |
-| [Knox Wildlife: Fox](https://github.com/broroeror/knox-wildlife-fox) | red fox — farm edge and fencerow |
-| [Knox Wildlife: Coyote](https://github.com/broroeror/knox-wildlife-coyote) | coyote — wide-ranging edge hunter |
-| [Knox Wildlife: Bobcat](https://github.com/broroeror/knox-wildlife-bobcat) | bobcat — deep cover and forest interior |
-| [Knox Wildlife: Squirrel](https://github.com/broroeror/knox-wildlife-squirrel) | grey squirrel — mature hardwood |
-| [Knox Wildlife: Overkill](https://github.com/broroeror/knox-wildlife-overkill) | overkill ruins the carcass |
+| **KnoxLife** (this repo) | the framework, densities, recovery, farms, turkeys, raccoons |
+| [KnoxLife: Foxes](https://github.com/broroeror/knoxlife-fox) | red fox — farm edge and fencerow |
+| [KnoxLife: Coyotes](https://github.com/broroeror/knoxlife-coyote) | coyote — wide-ranging edge hunter |
+| [KnoxLife: Bobcats](https://github.com/broroeror/knoxlife-bobcat) | bobcat — deep cover and forest interior |
+| [KnoxLife: Squirrels](https://github.com/broroeror/knoxlife-squirrel) | grey squirrel — mature hardwood |
+| [KnoxLife: Overkill](https://github.com/broroeror/knoxlife-overkill) | overkill ruins the carcass |
 
 Each addon needs this mod and nothing else. Disable one and its animals simply
 are not placed; nothing shifts to compensate, because every species has its own
@@ -46,12 +46,12 @@ target.
 
 Three pages under Sandbox Options:
 
-- **Knox Wildlife** — the world dials: density, species mix, group size,
+- **KnoxLife** — the world dials: density, species mix, group size,
   recovery, farms, admin tools.
-- **Knox Wildlife: Animals** — every species, each with an enable toggle, a
+- **KnoxLife: Animals** — every species, each with an enable toggle, a
   number-of-groups multiplier, and an animals-per-group multiplier. Addon
   species appear here automatically.
-- **Knox Wildlife: Overkill** — if that addon is installed.
+- **KnoxLife: Overkill** — if that addon is installed.
 
 One relationship worth knowing: **group size does not change how many animals
 exist.** The group count is worked out by dividing the population by the group

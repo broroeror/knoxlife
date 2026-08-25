@@ -20,10 +20,6 @@
 -- routes : 511 deer, 428 rabbit, 691 turkey, 700 raccoon
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 KnoxLife.Routes = {
     deer = {
         {

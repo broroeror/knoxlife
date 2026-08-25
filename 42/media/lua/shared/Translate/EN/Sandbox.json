@@ -32,7 +32,7 @@
     "Sandbox_KnoxLife_RebalanceFarms": "Farms: restock livestock realistically",
     "Sandbox_KnoxLife_RebalanceFarms_tooltip": "Stocks farms the way 1990s Kentucky actually was: cattle on roughly half of all farms, in cow-calf herds of real size rather than the two or three head vanilla leaves in a field. Sheep stay rare, at about one farm in a hundred.",
     "Sandbox_KnoxLife_AdminTools": "Admin and testing tools",
-    "Sandbox_KnoxLife_AdminTools_tooltip": "Adds a right-click menu that points an arrow at the nearest animal of each species, and can seed wildlife into ground the game has already processed. The same tools appear under Knox Wildlife in the debug menu. TURN THIS OFF if you want to find animals the hard way: an arrow to the nearest deer will spoil the tracking this mod exists to create. On a server it is admins and moderators only regardless of this setting.",
+    "Sandbox_KnoxLife_AdminTools_tooltip": "Adds a right-click menu that points an arrow at the nearest animal of each species, and can seed wildlife into ground the game has already processed. The same tools appear under KnoxLife in the debug menu. TURN THIS OFF if you want to find animals the hard way: an arrow to the nearest deer will spoil the tracking this mod exists to create. On a server it is admins and moderators only regardless of this setting.",
     "Sandbox_KnoxLife_SpeciesScale_option1": "1/4x",
     "Sandbox_KnoxLife_SpeciesScale_option2": "1/2x",
     "Sandbox_KnoxLife_SpeciesScale_option3": "Normal",

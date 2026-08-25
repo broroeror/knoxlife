@@ -2,7 +2,7 @@
 
 **Knox Life** is the spawn and population framework under the Knox mods: baked
 migration routes, a density-driven allocator, carrying-capacity population
-dynamics, and the debug tooling to see what it did. Knox Wildlife is the first
+dynamics, and the debug tooling to see what it did. Knox Life is the first
 thing built on it, not the framework itself — the mod id is `KnoxLife` and the
 Lua global is `KnoxLife`.
 
@@ -19,7 +19,7 @@ population model underneath is generic and public.
 A complete species addon is about sixty lines of Lua. A fully commented one
 lives in [`examples/KnoxLifeOpossum`](examples/KnoxLifeOpossum); a
 shipping one with art is the
-[fox addon](https://github.com/broroeror/knox-wildlife-fox).
+[fox addon](https://github.com/broroeror/knoxlife-fox).
 
 ---
 
@@ -40,9 +40,10 @@ end
 local KW = KnoxLife
 ```
 
-`KnoxWildlife` still works as an alias for `KnoxLife` — same table — because the
-framework was named after its first job before it grew past it. New code should
-say `KnoxLife`.
+The Lua global is `KnoxLife`, and it is the only one. An earlier
+`KnoxWildlife` alias was removed before first release rather than carried
+forward: nothing had shipped, so there was no code to stay compatible with,
+and two names for one table is a cost with no payer.
 
 **Versioning policy:** `API_VERSION` moves only on breaking changes to the
 functions documented here. Additive changes — new functions, new optional
@@ -181,7 +182,7 @@ mod disabled.
 
 ## 4. Sandbox options
 
-- `KW.getOption(name, fallback)` — reads the base mod's **Knox Wildlife**
+- `KW.getOption(name, fallback)` — reads the base mod's **KnoxLife**
   sandbox page.
 - `KW.readOption(opt, fallback)` — the general form: a plain name reads the
   base page, a dotted `"Page.Key"` reads *your* page.
@@ -192,7 +193,7 @@ mod disabled.
 The three option names you gave `registerSpecies` do the wiring for you:
 `enabledOption` gates placement, `routeOption` multiplies the species'
 population, `groupOption` multiplies its group size. Put the options on the
-shared **`KnoxWildlifeAnimals`** sandbox page (`page = KnoxWildlifeAnimals` in
+shared **`KnoxLifeAnimals`** sandbox page (`page = KnoxLifeAnimals` in
 your sandbox-options.txt) and they appear alongside every other species'.
 
 One shape constraint: `routeOption` / `groupOption` values index the scale
@@ -245,7 +246,7 @@ client means "wrong side", not "no room".
   as read-only — the stored def **is** the live registry.
 
 For everything else — the in-game population report, the locator, per-kill
-logging — open the debug menu (`Knox Wildlife` on the MAIN tab) rather than
+logging — open the debug menu (`KnoxLife` on the MAIN tab) rather than
 calling internals.
 
 ---
@@ -304,7 +305,7 @@ same machinery places them.
 your addon ships art (a `.glb` on a vanilla skeleton, so the game's own
 animation sets drive it) and a definitions file that copies a vanilla donor and
 overrides what differs. The
-[fox addon](https://github.com/broroeror/knox-wildlife-fox) is the reference:
+[fox addon](https://github.com/broroeror/knoxlife-fox) is the reference:
 `KWC_FoxDefinitions.lua` copies the vanilla raccoon, and `wild = true` /
 `canBeDomesticated = false` are load-bearing. Cleaning up that recipe into a
 first-class helper is on the roadmap; until then, copy the fox.

@@ -1,4 +1,4 @@
--- Knox Wildlife -- seed wildlife into a world that already existed.
+-- Knox Life -- seed wildlife into a world that already existed.
 --
 -- THE PROBLEM THIS SOLVES. Animal zones carry a `spawnedAnimals` flag, and once
 -- an area has been processed the game will not populate it again. So installing
@@ -18,10 +18,6 @@
 -- ordinary animals afterwards; nothing about them is special-cased.
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 -- Only ever seed ground that is actually loaded. addAnimal needs a real square,
@@ -68,7 +64,7 @@ function KW.spawnOne(animalType, breed, x, y)
     -- Project Zomboid loads media/lua/server on CLIENTS TOO. That is not a
     -- mistake in how this mod is laid out; the directory is a convention, and
     -- `isServer()` is what actually separates the two. Confirmed from a client
-    -- log: "[KnoxWildlife] registered 2107 routes ... as 6321 zones" was printed
+    -- log: "[KnoxLife] registered 2107 routes ... as 6321 zones" was printed
     -- by the player's own machine while connected to a dedicated server.
     --
     -- An animal created here on a client exists on that client and nowhere else.

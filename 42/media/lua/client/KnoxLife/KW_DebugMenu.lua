@@ -1,4 +1,4 @@
--- Knox Wildlife -- one section in the game's debug menu.
+-- Knox Life -- one section in the game's debug menu.
 --
 -- Everything this mod family can do for testing lives here, in one place,
 -- instead of being spread across a right-click menu and a handful of sandbox
@@ -15,12 +15,9 @@
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
 require "DebugUIs/DebugMenu/ISDebugMenu"
+require "KnoxLife/KW_Planner"
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 KW.DebugUI = ISPanel:derive("KWDebugUI")
@@ -157,6 +154,14 @@ function UI.rows()
         end
     end
 
+    -- The planner supersedes the console report for most purposes: same numbers,
+    -- but it also answers "what if I changed the dials?", which the report cannot.
+    -- The report stays because it prints, and a printed thing can be pasted into
+    -- an issue.
+    if KW.Planner then
+        rows[#rows + 1] = { label = "Population planner (what will these settings give?)",
+                            fn = function() KW.Planner.open() end }
+    end
     rows[#rows + 1] = { label = "Print population report to console", fn = UI.report }
 
     if SandboxVars and SandboxVars.KnoxLifeOverkill then
@@ -219,7 +224,7 @@ end
 
 function UI:render()
     ISPanel.render(self)
-    self:drawTextCentre("Knox Wildlife", self.width / 2, PAD,
+    self:drawTextCentre("KnoxLife", self.width / 2, PAD,
         1, 1, 1, 1, UIFont.Medium)
 end
 
@@ -247,7 +252,7 @@ if not ISDebugMenu.KnoxLifePatched then
     local original = ISDebugMenu.setupButtons
     function ISDebugMenu:setupButtons()
         original(self)
-        local info = { title = "Knox Wildlife", func = function() UI.OnOpenPanel() end,
+        local info = { title = "KnoxLife", func = function() UI.OnOpenPanel() end,
                        tab = "MAIN", marginTop = 0 }
         -- setupButtons sorts alphabetically and THEN appends the Close buttons,
         -- so a plain insert lands underneath Close. Step back over the trailing

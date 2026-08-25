@@ -25,6 +25,10 @@
 --- do and why it hid itself in multiplayer.
 
 require "KnoxLife/KW_DebugMenu"
+require "KnoxLife/KW_Planner"
+
+KnoxLife = KnoxLife or {}
+local KW = KnoxLife
 
 KnoxLifeAdminMenu = KnoxLifeAdminMenu or {}
 
@@ -48,8 +52,13 @@ local function onSpawnJuveniles(square, playerObj)
 end
 
 function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
-    -- Same gate as the vanilla admin menu, and deliberately not a looser one.
-    if not (isClient() and (isAdmin() or getAccessLevel() == "moderator")) then return end
+    -- KW.mayUseAdminTools, not isAdmin(). This used to gate on
+    -- `isClient() and (isAdmin() or getAccessLevel() == "moderator")` and both
+    -- options silently vanished on a server where the locator submenu -- same
+    -- mod, same player, same right-click -- appeared fine. The locator had
+    -- already been fixed to read getAccessLevel() directly; this had not, so the
+    -- two disagreed. One shared check now, in KW_Core.
+    if not KW.mayUseAdminTools() then return end
     if test and ISWorldObjectContextMenu and ISWorldObjectContextMenu.Test then return true end
 
     local square
@@ -60,8 +69,23 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
     if not square then return end
 
     local playerObj = getSpecificPlayer(player)
-    context:addOption("Knox: spawn one of each juvenile here", square,
-                      onSpawnJuveniles, playerObj)
+    -- Spawning is the MP-only half: an animal created on a client renders and
+    -- walks but can never be hurt, because only the server allocates the network
+    -- id a hit packet needs (KW_Reseed.lua:64). So this asks the server, and only
+    -- exists where there is one to ask.
+    if isClient and isClient() then
+        context:addOption("Knox: spawn one of each juvenile here", square,
+                          onSpawnJuveniles, playerObj)
+    end
+
+    -- The planner is read-only, client-side, and needs no server round trip --
+    -- it previews the maths, it does not apply anything. So it has no business
+    -- being MP-only, and offering it in singleplayer saves needing -debug just
+    -- to look at a table.
+    if KW.Planner then
+        context:addOption("Knox: population planner", nil,
+                          function() KW.Planner.open() end)
+    end
 end
 
 Events.OnFillWorldObjectContextMenu.Add(KnoxLifeAdminMenu.doMenu)

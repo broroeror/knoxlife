@@ -1,4 +1,4 @@
--- Knox Wildlife -- admin locator.
+-- Knox Life -- admin locator.
 --
 -- Wild animals are hard to find on purpose: a migration route is a few hundred
 -- tiles long, herds move along it, and they exist as meta simulation until you
@@ -17,10 +17,6 @@
 require "ISUI/ISWorldObjectContextMenu"
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 KW.Locator = KW.Locator or {}
@@ -193,30 +189,14 @@ end
 -- Alone, you own the world, and the menu costs one right-click to ignore. Anyone
 -- who would rather not know where the deer are can turn Wildlife Admin Tools off
 -- on a new save; the tooltip says so plainly.
-local function mayUseTools()
-    if isDebugEnabled and isDebugEnabled() then return true end
-    if isClient and isClient() then
-        -- Read the access level directly. The file-local isAdmin(player) above
-        -- lexically shadows vanilla's zero-arg global here, so calling it with
-        -- no argument returned false for every real admin -- the menu was
-        -- debug-mode-only on MP and nobody had told us.
-        local lvl = getAccessLevel and getAccessLevel() or ""
-        lvl = string.lower(tostring(lvl))
-        return lvl == "admin" or lvl == "moderator"
-    end
-    -- Singleplayer or the coop host. The fallback is what an existing save gets,
-    -- since it has no stored value for an option that did not exist when it was
-    -- created, so it has to be the permissive one.
-    if not KW.getOption then return true end
-    return KW.getOption("AdminTools", true) and true or false
-end
+local function mayUseTools() return KW.mayUseAdminTools() end
 
 local function onContextMenu(playerIdx, context, worldobjects)
     local player = getSpecificPlayer(playerIdx)
     if not player then return end
     if not mayUseTools() then return end
 
-    local parent = context:addOption("Knox Wildlife", worldobjects, nil)
+    local parent = context:addOption("KnoxLife", worldobjects, nil)
     local sub = ISContextMenu:getNew(context)
     context:addSubMenu(parent, sub)
 

@@ -1,4 +1,4 @@
--- Knox Wildlife: Opossums -- example addon for the Knox Life API.
+-- Knox Life: Opossums -- example addon for the Knox Life API.
 --
 -- This is the whole addon. There is no route data, no generator, no map
 -- analysis: the base mod owns hundreds of migration routes across the map, and

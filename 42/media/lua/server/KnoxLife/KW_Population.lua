@@ -1,4 +1,4 @@
--- Knox Wildlife -- populations that maintain themselves.
+-- Knox Life -- populations that maintain themselves.
 --
 -- THE PROBLEM. Hunt an area out and it stays hunted out for the rest of the
 -- save. Three engine facts combine to cause it, each verified rather than
@@ -38,10 +38,6 @@
 -- standing, and far cheaper than ticking 4,065 cells forever.
 
 KnoxLife = KnoxLife or {}
--- Compatibility alias. The framework was called KnoxWildlife before it grew a
--- name that does not promise fur, and third-party code may still say so. Same
--- table either way, and idempotent whatever order these files load in.
-KnoxWildlife = KnoxLife
 local KW = KnoxLife
 
 KW.POP = {
