@@ -119,16 +119,27 @@ KW.preview = nil
 -- All of them, not just the first: KW.scaledGroupOf returns three values, and a
 -- single-result wrapper would silently hand back min with max and maxMale as
 -- nil. Nested calls restore the outer preview rather than clearing to live.
+--
+-- NOT table.pack/table.unpack. Those are Lua 5.2 and the game runs Kahlua, which
+-- is a 5.1 -- they parse cleanly, pass every offline test under the host's real
+-- Lua, and then throw "Object tried to call nil" the first time an admin opens
+-- the planner. That is precisely what shipped. select("#", ...) and the
+-- three-argument global unpack are both 5.1, and vanilla uses both, so the count
+-- survives a nil in the middle of the results without either of them.
+local function countAndPack(...)
+    return select("#", ...), { ... }
+end
+
 function KW.withPreview(settings, fn)
     local saved = KW.preview
     KW.preview = settings
-    local res = table.pack(pcall(fn))
+    local n, res = countAndPack(pcall(fn))
     KW.preview = saved
     if not res[1] then
         KW.log("preview failed: " .. tostring(res[2]))
         return nil
     end
-    return table.unpack(res, 2, res.n)
+    return unpack(res, 2, n)
 end
 
 function KW.pickFromScale(scale, name, defaultIndex)

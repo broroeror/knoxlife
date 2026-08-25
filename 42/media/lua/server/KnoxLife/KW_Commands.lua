@@ -9,7 +9,14 @@
 ---
 --- So the client asks (KW_AdminMenu.lua) and the server acts, here.
 
-if not KW then KW = {} end
+-- The house binding, and it matters. This file used to open with
+-- `if not KW then KW = {} end`, which creates a BARE GLOBAL called KW that has
+-- no relationship to KnoxLife -- so KW.spawnOne and KW.pickBreed (defined on
+-- KnoxLife in KW_Reseed.lua) were both nil here, every spawn silently missed,
+-- and KnoxLife.spawnJuvenilesAt never existed for the debug menu to find. It
+-- was the only file in the mod that bound KW differently.
+KnoxLife = KnoxLife or {}
+local KW = KnoxLife
 
 local JUVENILES = {
     { id = "kwc_foxkit",       label = "fox kit" },
@@ -45,11 +52,18 @@ local function onClientCommand(module, command, player, args)
     -- Re-check server-side. The client menu is already admin-gated, but a
     -- client command is just a packet and anyone can send one; a spawn command
     -- that trusts the sender is a cheat vector in a public mod.
+    -- Compared lowercase, because that is what the game returns: every real
+    -- access-level comparison in vanilla is `getAccessLevel() == "admin"`, and
+    -- every capitalised "Admin" in vanilla is a UI label. Checking for "Admin"
+    -- refused a genuine admin, and the refusal line said "non-admin admin",
+    -- which read as nonsense. Fold the case and PRINT THE LEVEL, so the log says
+    -- what actually failed instead of needing a code read to find out.
     if player and player.getAccessLevel then
-        local lvl = player:getAccessLevel()
-        if lvl ~= "Admin" and lvl ~= "Moderator" then
-            print("[KnoxLife] refused spawnJuveniles from non-admin "
-                  .. tostring(player:getUsername()))
+        local lvl = string.lower(tostring(player:getAccessLevel() or ""))
+        if lvl ~= "admin" and lvl ~= "moderator" then
+            print("[KnoxLife] refused spawnJuveniles from "
+                  .. tostring(player:getUsername())
+                  .. " -- access level '" .. lvl .. "'")
             return
         end
     end
