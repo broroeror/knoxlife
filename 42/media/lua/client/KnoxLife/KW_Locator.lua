@@ -27,12 +27,11 @@ L.circle = nil
 L.target = nil          -- {x, y, label}
 L.ARRIVE_DIST = 25      -- tiles; close enough to call it found
 
-local function isAdmin(player)
-    if not player then return false end
-    if isDebugEnabled and isDebugEnabled() then return true end
-    local lvl = player:getAccessLevel()
-    return lvl == "Admin" or lvl == "admin"
-end
+-- NOTE: a file-local isAdmin(player) used to live here. It shadowed the
+-- zero-arg Java global of the same name and returned false for every real
+-- admin -- the original of the trap written up as STATUS item 7d. It had been
+-- dead code since mayUseTools() started calling KW.mayUseAdminTools(), but a
+-- dead shadow is still a loaded one, so it is gone rather than merely unused.
 
 function L.clear()
     if L.circle then L.circle:remove(); L.circle = nil end
@@ -43,13 +42,19 @@ end
 -- Routes are stored as flat {x1,y1,x2,y2,...}. We aim at the middle vertex
 -- rather than the first: the herd walks the whole polyline, so the midpoint is
 -- the closest thing to "where it probably is".
-local function midpointOf(follow)
+function L.midpointOf(follow)
     local pairsCount = math.floor(#follow / 2)
     if pairsCount < 1 then return nil end
-    local i = math.floor(pairsCount / 2)
+    -- ceil, not floor. With floor a 3-vertex route picks vertex 1 -- the START
+    -- -- which is what this function's own comment says it does not do. 136 of
+    -- the 2,330 shipped routes are 3-vertex, so 5.8% of map dots sat at the
+    -- start of the walk instead of the middle of it. ceil gives the true middle
+    -- for an odd vertex count and is identical for an even one.
+    local i = math.ceil(pairsCount / 2)
     if i < 1 then i = 1 end
     return follow[(i - 1) * 2 + 1], follow[(i - 1) * 2 + 2]
 end
+local midpointOf = L.midpointOf
 
 -- Only the first N routes of a class are actually registered, per the density
 -- setting, so pointing at route 200 when 130 are live would send you to an
@@ -111,9 +116,35 @@ function L.findNearest(part, px, py)
 end
 
 -- A stable colour per species, so two markers are never confusable and the same
--- animal is always the same colour between sessions. Hashing the name beats a
--- hand-kept table that an addon species could never appear in.
+-- animal is always the same colour between sessions.
+--
+-- The hash below was ALL of this function, and its own comment claimed it made
+-- two markers never confusable. It did the opposite. Hashing a name to a single
+-- hue puts every species on one 360-value wheel, and with eight of them the
+-- wheel collided badly: rabbit #C226BC, fox #BA26C3 and bobcat #CF28AD came out
+-- three near-identical magentas, coyote and turkey two cyans. Measured as
+-- weighted RGB distance the closest pair scored 17 -- indistinguishable. That
+-- was survivable for one homing arrow at a time and is useless for a map
+-- showing every species at once, which is what surfaced it.
+--
+-- So the species WE ship get pinned colours, chosen for separation on a pale
+-- map (closest pair now 109, a six-fold improvement) and checked pairwise
+-- rather than by eye. The hash stays as the fallback, because an addon species
+-- still has to get some colour and it cannot appear in a table shipped here.
+local PINNED = {
+    kwc_fox      = { 0.94, 0.24, 0.00 },   -- orange
+    deer         = { 0.55, 0.37, 0.00 },   -- amber
+    turkey       = { 0.42, 0.56, 0.00 },   -- olive
+    kwc_squirrel = { 0.09, 0.64, 0.29 },   -- green
+    kwc_coyote   = { 0.06, 0.64, 0.64 },   -- teal
+    raccoon      = { 0.12, 0.44, 0.85 },   -- blue
+    rabbit       = { 0.49, 0.23, 0.93 },   -- violet
+    kwc_bobcat   = { 0.84, 0.14, 0.61 },   -- magenta
+}
+
 function L.colourFor(id)
+    local pin = PINNED[id]
+    if pin then return pin[1], pin[2], pin[3] end
     local h = 0
     for i = 1, #id do h = (h * 31 + string.byte(id, i)) % 360 end
     local function chan(off)

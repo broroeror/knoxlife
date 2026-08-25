@@ -26,6 +26,7 @@
 
 require "KnoxLife/KW_DebugMenu"
 require "KnoxLife/KW_Planner"
+require "KnoxLife/KW_MapOverlay"
 
 KnoxLife = KnoxLife or {}
 local KW = KnoxLife
@@ -84,7 +85,13 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
     -- to look at a table.
     if KW.Planner then
         context:addOption("Knox: population planner", nil,
-                          function() KW.Planner.open() end)
+                          function() KW.Planner.open(player) end)
+    end
+
+    -- The planner says how many, this says where. Same allocation, two views.
+    if KW.MapOverlay then
+        context:addOption("Knox: routes on the map", nil,
+                          function() KW.MapOverlay.show(player) end)
     end
 end
 

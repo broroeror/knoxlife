@@ -27,26 +27,32 @@
 -- through -- and then calls the real KW.allocateRoutes(). So the planner cannot
 -- drift from the spawner: there is only one implementation and this is a caller
 -- of it. See KW.withPreview in KW_Core.lua.
+--
+-- ⚠️ LAYOUT IS MEASURED, NEVER CONSTANT
+--
+-- This panel's first version placed its columns at fixed pixel offsets. At a
+-- larger UI scale the strings outgrew the gaps and the header rendered as
+-- "per sq mgroup", with every number sitting under the next column's label. The
+-- data was right and the panel looked broken. Every column below is sized from
+-- the widest string that will actually go in it -- see KW_UI.lua. If you add a
+-- column, add it to the measuring pass too.
 
 require "ISUI/ISPanel"
 require "ISUI/ISButton"
 require "ISUI/ISComboBox"
+require "KnoxLife/KW_UI"
+require "KnoxLife/KW_MapOverlay"
 
 KnoxLife = KnoxLife or {}
 local KW = KnoxLife
+local U = KW.UI
 
 KW.Planner = ISPanel:derive("KWPlanner")
 local P = KW.Planner
 
 local FONT = UIFont.Small
-local FH = getTextManager():getFontHeight(FONT)
-local PAD = 12
-local ROW = FH + 9
-local W = 640
-
--- Column x-offsets. Named because a table drawn with drawText needs its columns
--- in one place or they drift apart the first time a label changes.
-local COL = { name = 0, density = 210, group = 290, routes = 375, animals = 500, bar = 575 }
+local HEAD = UIFont.Medium
+local SWATCH = 9
 
 -- Labels for the three dials. The scales themselves live in KW_Core -- these are
 -- only the words, and the index is what gets handed to KW.preview.
@@ -58,6 +64,17 @@ local DIALS = {
     { key = "SpeciesMix", label = "Species Mix", default = 1,
       names = { "Realistic", "Balanced", "Deer-heavy" } },
 }
+
+-- Column headings, in order. `right` means the cell is right-aligned, which is
+-- what makes a column of numbers readable as a column.
+local COLS = {
+    { key = "label",   head = "Species" },
+    { key = "density", head = "per sq mi", right = true },
+    { key = "group",   head = "group",     right = true },
+    { key = "routes",  head = "routes",    right = true },
+    { key = "animals", head = "animals",   right = true },
+}
+local GAP = 18
 
 --- The plan for one set of dial positions, or for the live world when nil.
 --
@@ -75,6 +92,10 @@ local function planFor(settings)
             local n = math.floor((part.count or 0) * group + 0.5)
             animals = animals + n
             routes = routes + (part.count or 0)
+            local r, g, b = 1, 1, 1
+            if KW.Locator and KW.Locator.colourFor then
+                r, g, b = KW.Locator.colourFor(part.species)
+            end
             out[#out + 1] = {
                 species = part.species,
                 label = (KW.Locator and KW.Locator.labelFor and KW.Locator.labelFor(part.species))
@@ -84,6 +105,7 @@ local function planFor(settings)
                 group = group,
                 animals = n,
                 pool = part.pool,
+                r = r, g = g, b = b,
             }
         end
         table.sort(out, function(a, b) return a.animals > b.animals end)
@@ -101,22 +123,113 @@ function P.settingsFromDials(self)
     return s
 end
 
+--- Turn the plan into the exact strings each cell will show.
+--
+-- Formatting happens HERE rather than in render, because the column widths are
+-- measured from these strings and a cell formatted differently at draw time
+-- would not fit the space measured for it.
+local function cellsFor(r)
+    return {
+        label   = r.label,
+        density = string.format("%.2f", r.group > 0 and (r.animals / 88.83) or 0),
+        group   = string.format("%.1f", r.group),
+        routes  = r.wanted > r.got and (r.got .. " of " .. r.wanted) or tostring(r.got),
+        animals = tostring(r.animals),
+    }
+end
+
 function P:recompute()
     self.result = planFor(self:settingsFromDials()) or { rows = {}, animals = 0, routes = 0 }
+    local res = self.result
+
     self.maxAnimals = 1
-    for _, r in ipairs(self.result.rows) do
+    for _, r in ipairs(res.rows) do
+        r.cells = cellsFor(r)
         if r.animals > self.maxAnimals then self.maxAnimals = r.animals end
     end
+    self.totals = {
+        label   = "Total",
+        density = string.format("%.1f", res.animals / 88.83),
+        group   = "",
+        routes  = tostring(res.routes),
+        animals = tostring(res.animals),
+    }
+
+    self.note = "No species is route-limited here. Group Size changes herd size, not the total."
+    local capped = 0
+    for _, r in ipairs(res.rows) do if r.wanted > r.got then capped = capped + 1 end end
+    if capped > 0 then
+        self.note = capped .. " species want more routes than the map can supply -- "
+                 .. "raising density further will not add those animals."
+    end
+
+    self:layout()
+end
+
+--- Size every column to the widest string that will go in it, then size the
+--- panel to the columns. Called on every recompute: the strings change.
+function P:layout()
+    local strings = {}
+    for _, c in ipairs(COLS) do strings[c.key] = { c.head } end
+    for _, r in ipairs(self.result.rows) do
+        for _, c in ipairs(COLS) do
+            table.insert(strings[c.key], r.cells[c.key])
+        end
+    end
+    for _, c in ipairs(COLS) do table.insert(strings[c.key], self.totals[c.key]) end
+
+    self.fh = U.h(FONT)
+    self.row = self.fh + 9
+
+    local x = U.PAD + SWATCH + 8          -- room for the colour swatch
+    for _, c in ipairs(COLS) do
+        c.x = x
+        c.w = U.widest(FONT, strings[c.key])
+        x = x + c.w + GAP
+    end
+    self.barX = x
+    local barW = 64
+
+    -- The panel is at least as wide as its widest single line -- the dials, the
+    -- title, and the footnote are all longer than the table on a narrow plan.
+    local dialW = 0
+    for _, d in ipairs(DIALS) do
+        dialW = math.max(dialW, U.widest(FONT, d.names) + 34, U.w(FONT, d.label))
+    end
+    self.dialW = dialW
+    local need = math.max(
+        x + barW + U.PAD,
+        U.PAD * 2 + dialW * 3 + 20,
+        U.PAD * 2 + U.w(FONT, self.note),
+        U.PAD * 2 + U.w(HEAD, "KnoxLife -- population planner") + 110)
+    self:setWidth(math.ceil(need))
+
+    local headH = U.h(HEAD)
+    self.dialTop = U.PAD + headH + 10 + self.fh + 4
+    self.tableTop = self.dialTop + self.row + U.PAD + self.fh + 8
+    self:setHeight(math.ceil(
+        self.tableTop + self.row * (#self.result.rows + 2) + self.fh + U.PAD * 2))
+
+    if self.combos then
+        local cw = math.floor((self:getWidth() - U.PAD * 2 - 20) / 3)
+        local cx = U.PAD
+        for _, c in ipairs(self.combos) do
+            c:setX(cx); c:setY(self.dialTop); c:setWidth(cw); c:setHeight(self.row)
+            cx = cx + cw + 10
+        end
+    end
+    if self.closeBtn then self.closeBtn:setX(self:getWidth() - U.PAD - 90) end
+    if self.mapBtn then self.mapBtn:setX(self:getWidth() - U.PAD - 90 - 8 - 104) end
 end
 
 function P:createChildren()
     ISPanel.createChildren(self)
+    U.skin(self)
     self.combos = {}
 
-    local x = PAD
-    local cw = math.floor((W - PAD * 2 - 20) / 3)
+    local fh = U.h(FONT)
     for i, d in ipairs(DIALS) do
-        local c = ISComboBox:new(x, PAD + FH + 6, cw, ROW, self, function() self:recompute() end)
+        local c = ISComboBox:new(U.PAD, 0, 120, fh + 9, self, function() self:recompute() end)
         c:initialise()
         for _, n in ipairs(d.names) do c:addOption(n) end
         -- Open on what the world is actually running, so the first thing an
@@ -125,88 +238,95 @@ function P:createChildren()
         c.selected = math.max(1, math.min(#d.names, math.floor(tonumber(live) or d.default)))
         self:addChild(c)
         self.combos[i] = c
-        x = x + cw + 10
     end
 
-    self.tableTop = PAD + FH + 6 + ROW + PAD + FH + 8
-
-    local close = ISButton:new(W - PAD - 90, PAD, 90, ROW, "Close", self,
+    self.closeBtn = ISButton:new(0, U.PAD, 90, fh + 9, "Close", self,
         function() self:removeFromUIManager(); P.instance = nil end)
-    close:initialise(); close:instantiate()
-    if close.enableCancelColor then close:enableCancelColor() end
-    self:addChild(close)
+    self.closeBtn:initialise(); self.closeBtn:instantiate()
+    if self.closeBtn.enableCancelColor then self.closeBtn:enableCancelColor() end
+    self:addChild(self.closeBtn)
+
+    -- The table says how many. The map says where. They are the same question.
+    self.mapBtn = ISButton:new(0, U.PAD, 104, fh + 9, "Show on map", self,
+        function() KW.MapOverlay.show(self.playerNum or 0) end)
+    self.mapBtn:initialise(); self.mapBtn:instantiate()
+    self:addChild(self.mapBtn)
 
     self:recompute()
-    self:setHeight(self.tableTop + ROW * (#self.result.rows + 3) + PAD * 2)
 end
 
 function P:render()
     ISPanel.render(self)
     local res = self.result
     if not res then return end
+    local W, fh, row = self:getWidth(), self.fh, self.row
 
-    self:drawText("KnoxLife -- population planner", PAD, PAD - 2, 1, 1, 1, 1, UIFont.Medium)
+    self:drawText("KnoxLife -- population planner", U.PAD, U.PAD - 2,
+                  U.TEXT[1], U.TEXT[2], U.TEXT[3], 1, HEAD)
 
-    -- Dial labels sit above their combo boxes.
-    local x, cw = PAD, math.floor((W - PAD * 2 - 20) / 3)
+    -- Dial labels sit ABOVE their combo boxes, in the gap reserved for them.
+    -- They used to be drawn into the same band as the combos and were half
+    -- hidden behind them.
+    local cx = U.PAD
+    local cw = math.floor((W - U.PAD * 2 - 20) / 3)
     for _, d in ipairs(DIALS) do
-        self:drawText(d.label, x, PAD + FH - 4, 0.66, 0.68, 0.62, 1, FONT)
-        x = x + cw + 10
+        self:drawText(d.label, cx, self.dialTop - fh - 4, U.DIM[1], U.DIM[2], U.DIM[3], 1, FONT)
+        cx = cx + cw + 10
     end
 
-    local y = self.tableTop - ROW
-    local function head(t, cx) self:drawText(t, PAD + cx, y, 0.6, 0.62, 0.56, 1, FONT) end
-    head("Species", COL.name); head("per sq mi", COL.density); head("group", COL.group)
-    head("routes", COL.routes); head("animals", COL.animals)
-    y = y + ROW - 2
-    self:drawRect(PAD, y, W - PAD * 2, 1, 0.35, 1, 1, 1)
+    local function cell(text, c, y, r, g, b)
+        if c.right then
+            self:drawTextRight(text, c.x + c.w, y, r, g, b, 1, FONT)
+        else
+            self:drawText(text, c.x, y, r, g, b, 1, FONT)
+        end
+    end
+
+    local y = self.tableTop - row
+    for _, c in ipairs(COLS) do
+        cell(c.head, c, y, U.DIM[1], U.DIM[2], U.DIM[3])
+    end
+    y = y + row - 2
+    self:drawRect(U.PAD, y, W - U.PAD * 2, 1, U.RULE[1], U.RULE[2], U.RULE[3], U.RULE[4])
     y = y + 6
 
     for _, r in ipairs(res.rows) do
         local capped = r.wanted > r.got
-        local cr, cg, cb = 0.88, 0.89, 0.85
-        if capped then cr, cg, cb = 0.92, 0.72, 0.36 end
+        local cr, cg, cb = U.TEXT[1], U.TEXT[2], U.TEXT[3]
+        if capped then cr, cg, cb = U.WARN[1], U.WARN[2], U.WARN[3] end
 
-        self:drawText(r.label, PAD + COL.name, y, cr, cg, cb, 1, FONT)
-        self:drawText(string.format("%.2f", r.group > 0 and (r.animals / 88.83) or 0),
-            PAD + COL.density, y, 0.7, 0.72, 0.66, 1, FONT)
-        self:drawText(string.format("%.1f", r.group), PAD + COL.group, y, 0.7, 0.72, 0.66, 1, FONT)
+        -- The swatch is the tie to the map overlay: same colour, same species.
+        U.swatch(self, U.PAD, y + math.floor((fh - SWATCH) / 2), SWATCH, r.r, r.g, r.b)
 
-        local routeText = tostring(r.got)
-        if capped then routeText = routeText .. " of " .. tostring(r.wanted) end
-        self:drawText(routeText, PAD + COL.routes, y, cr, cg, cb, 1, FONT)
-        self:drawText(tostring(r.animals), PAD + COL.animals, y, cr, cg, cb, 1, FONT)
+        for _, c in ipairs(COLS) do
+            local dim = (c.key == "density" or c.key == "group")
+            if dim and not capped then
+                cell(r.cells[c.key], c, y, U.DIM[1], U.DIM[2], U.DIM[3])
+            else
+                cell(r.cells[c.key], c, y, cr, cg, cb)
+            end
+        end
 
-        local bw = math.max(2, math.floor(r.animals / self.maxAnimals * 50))
-        self:drawRect(PAD + COL.bar, y + 4, bw, FH - 6,
-            0.85, capped and 0.66 or 0.49, capped and 0.42 or 0.57, capped and 0.21 or 0.41)
-        y = y + ROW
+        local bw = math.max(2, math.floor(r.animals / self.maxAnimals * 56))
+        self:drawRect(self.barX, y + 4, bw, fh - 6, capped and 0.85 or 0.7, r.r, r.g, r.b)
+        y = y + row
     end
 
     y = y + 4
-    self:drawRect(PAD, y, W - PAD * 2, 1, 0.35, 1, 1, 1)
+    self:drawRect(U.PAD, y, W - U.PAD * 2, 1, U.RULE[1], U.RULE[2], U.RULE[3], U.RULE[4])
     y = y + 8
-    self:drawText("Total", PAD + COL.name, y, 1, 1, 1, 1, FONT)
-    self:drawText(string.format("%.1f", res.animals / 88.83), PAD + COL.density, y, 1, 1, 1, 1, FONT)
-    self:drawText(tostring(res.routes), PAD + COL.routes, y, 1, 1, 1, 1, FONT)
-    self:drawText(tostring(res.animals), PAD + COL.animals, y, 1, 1, 1, 1, FONT)
-    y = y + ROW
+    for _, c in ipairs(COLS) do cell(self.totals[c.key], c, y, 1, 1, 1) end
+    y = y + row
 
-    local capped = 0
-    for _, r in ipairs(res.rows) do if r.wanted > r.got then capped = capped + 1 end end
-    local note
-    if capped > 0 then
-        note = capped .. " species want more routes than the map can supply -- "
-             .. "raising density further will not add those animals."
-    else
-        note = "No species is route-limited here. Group Size changes herd size, not the total."
-    end
-    self:drawText(note, PAD, y, 0.62, 0.64, 0.58, 1, FONT)
+    self:drawText(self.note, U.PAD, y, U.DIM[1], U.DIM[2], U.DIM[3], 1, FONT)
 end
 
-function P.open()
+--- @param playerNum which split-screen player asked. Threaded through rather
+---        than assumed 0, because "Show on map" opens THAT player's map.
+function P.open(playerNum)
     if P.instance then P.instance:removeFromUIManager(); P.instance = nil end
-    local ui = P:new(140, 110, W, 300)
+    local ui = P:new(140, 110, 640, 300)
+    ui.playerNum = playerNum or 0
     ui.moveWithMouse = true
     ui:initialise(); ui:instantiate()
     ui:addToUIManager()
