@@ -114,33 +114,40 @@ function KW.heldCount() return #held end
 function KW.spawnStageAt(stageId, groupId, x, y)
     local breed = breedFor(stageId, groupId)
     if not (KW.spawnOne and KW.spawnOne(stageId, breed, x, y)) then return false end
-    -- spawnOne does not hand the animal back, so find what just arrived --
-    -- and REPORT whether it is findable. `addToWorld()` returning without
-    -- error is not proof the animal is on that square; an admin looking at an
-    -- empty field needs to know which of the two happened, and until now the
-    -- log said "placed" either way.
+    -- ⚠️ DO NOT LOOK AT THE SQUARE ITSELF. An earlier version did, found zero
+    -- animals every single time, and reported "CREATED BUT NOT ON THE SQUARE"
+    -- for a fox and a coyote that the nearby report then found alive three
+    -- tiles away. The animal is not registered against its square
+    -- synchronously, so the check ran too early -- and because nothing was
+    -- found, nothing was ever held, and they all wandered off. A false alarm
+    -- that also disabled the feature it was reporting on.
+    --
+    -- Sweep a few tiles instead. Anything of this type that close was put there
+    -- by us a moment ago.
     local found = 0
-    local sq = getCell and getCell():getGridSquare(x, y, 0)
-    if not sq then
-        KW.log(string.format("spawn %s: addAnimal succeeded but square %d,%d,0 "
-            .. "is gone -- nothing to stand on", tostring(stageId), x, y))
-        return true, 0
-    end
-    local list = sq.getAnimals and sq:getAnimals()
-    local n = 0
-    if list then pcall(function() n = list:size() end) end
-    for i = 0, n - 1 do
-        local a = list:get(i)
-        local ok, t = pcall(function() return a:getAnimalType() end)
-        if ok and tostring(t) == tostring(stageId) then
-            holdStill(a)
-            found = found + 1
+    local cell = getCell and getCell()
+    if cell then
+        for gx = math.floor(x) - 3, math.floor(x) + 3 do
+            for gy = math.floor(y) - 3, math.floor(y) + 3 do
+                local sq = cell:getGridSquare(gx, gy, 0)
+                local list = sq and sq.getAnimals and sq:getAnimals()
+                local n = 0
+                if list then pcall(function() n = list:size() end) end
+                for i = 0, n - 1 do
+                    local a = list:get(i)
+                    local ok, t = pcall(function() return a:getAnimalType() end)
+                    if ok and tostring(t) == tostring(stageId) then
+                        holdStill(a)
+                        found = found + 1
+                    end
+                end
+            end
         end
     end
     if found == 0 then
-        KW.log(string.format("⚠️ spawn %s at %d,%d: addToWorld() reported success "
-            .. "but the square holds %d animal(s) and none of them is one -- the "
-            .. "animal is NOT where it was put", tostring(stageId), x, y, n))
+        KW.log(string.format("spawn %s at %d,%d: addToWorld() succeeded but "
+            .. "nothing of that type is within 3 tiles a moment later",
+            tostring(stageId), x, y))
     end
     return true, found
 end
@@ -299,8 +306,9 @@ local function onClientCommand(module, command, player, args)
             tostring(args.stage), tostring(player and player:getUsername() or "?"),
             math.floor(args.x), math.floor(args.y),
             (not ok) and "FAILED (see the reason logged above)"
-                or ((found or 0) > 0 and "placed and confirmed on the square"
-                                     or "CREATED BUT NOT ON THE SQUARE")))
+                or ((found or 0) > 0
+                        and string.format("placed, %d held still", found)
+                        or "CREATED BUT NOT FOUND NEARBY")))
         return
     end
 
