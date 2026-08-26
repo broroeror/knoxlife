@@ -84,6 +84,14 @@ local function onRelease(square, playerObj)
     end
 end
 
+local function onNearby(square, playerObj)
+    if not playerObj then return end
+    sendClientCommand(playerObj, "KnoxLife", "nearby", {})
+    if HaloTextHelper then
+        HaloTextHelper.addGoodText(playerObj, "Asked the server what is nearby")
+    end
+end
+
 local function onProvoke(square, playerObj)
     if not playerObj then return end
     sendClientCommand(playerObj, "KnoxLife", "provoke", {})
@@ -146,6 +154,12 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
         -- always flee humans". This lets them go.
         context:addOption("Knox: release held animals", square,
                           onRelease, playerObj)
+
+        -- "Did it spawn or not?" answered from the server rather than by
+        -- looking at an empty field. Prints every KnoxLife animal within 20
+        -- tiles, with distance and health, to the server log.
+        context:addOption("Knox: what is near me (server log)", square,
+                          onNearby, playerObj)
     end
 
     -- The planner is read-only, client-side, and needs no server round trip --

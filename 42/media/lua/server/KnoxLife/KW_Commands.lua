@@ -114,19 +114,69 @@ function KW.heldCount() return #held end
 function KW.spawnStageAt(stageId, groupId, x, y)
     local breed = breedFor(stageId, groupId)
     if not (KW.spawnOne and KW.spawnOne(stageId, breed, x, y)) then return false end
-    -- spawnOne does not hand the animal back, so find what just arrived.
+    -- spawnOne does not hand the animal back, so find what just arrived --
+    -- and REPORT whether it is findable. `addToWorld()` returning without
+    -- error is not proof the animal is on that square; an admin looking at an
+    -- empty field needs to know which of the two happened, and until now the
+    -- log said "placed" either way.
+    local found = 0
     local sq = getCell and getCell():getGridSquare(x, y, 0)
-    local list = sq and sq.getAnimals and sq:getAnimals()
-    if list then
-        local n = 0
-        pcall(function() n = list:size() end)
-        for i = 0, n - 1 do
-            local a = list:get(i)
-            local ok, t = pcall(function() return a:getAnimalType() end)
-            if ok and tostring(t) == tostring(stageId) then holdStill(a) end
+    if not sq then
+        KW.log(string.format("spawn %s: addAnimal succeeded but square %d,%d,0 "
+            .. "is gone -- nothing to stand on", tostring(stageId), x, y))
+        return true, 0
+    end
+    local list = sq.getAnimals and sq:getAnimals()
+    local n = 0
+    if list then pcall(function() n = list:size() end) end
+    for i = 0, n - 1 do
+        local a = list:get(i)
+        local ok, t = pcall(function() return a:getAnimalType() end)
+        if ok and tostring(t) == tostring(stageId) then
+            holdStill(a)
+            found = found + 1
         end
     end
-    return true
+    if found == 0 then
+        KW.log(string.format("⚠️ spawn %s at %d,%d: addToWorld() reported success "
+            .. "but the square holds %d animal(s) and none of them is one -- the "
+            .. "animal is NOT where it was put", tostring(stageId), x, y, n))
+    end
+    return true, found
+end
+
+--- List every KnoxLife animal near a point. Answers "did it spawn or not?"
+--- without guessing, which is the question that has cost the most time here.
+function KW.nearbyReport(x, y, radius)
+    radius = radius or 20
+    local cell = getCell and getCell()
+    if not cell then return {} end
+    local out = {}
+    for gx = math.floor(x - radius), math.floor(x + radius) do
+        for gy = math.floor(y - radius), math.floor(y + radius) do
+            local sq = cell:getGridSquare(gx, gy, 0)
+            local list = sq and sq.getAnimals and sq:getAnimals()
+            if list then
+                local n = 0
+                pcall(function() n = list:size() end)
+                for i = 0, n - 1 do
+                    local a = list:get(i)
+                    local ok, t = pcall(function() return a:getAnimalType() end)
+                    if ok and t then
+                        local hp = -1
+                        pcall(function() hp = a:getHealth() end)
+                        out[#out + 1] = {
+                            t = tostring(t),
+                            d = math.sqrt((gx - x) ^ 2 + (gy - y) ^ 2),
+                            hp = hp,
+                        }
+                    end
+                end
+            end
+        end
+    end
+    table.sort(out, function(p, q) return p.d < q.d end)
+    return out
 end
 
 --- Make the nearest predator attack the player.
@@ -170,7 +220,8 @@ end
 local function onClientCommand(module, command, player, args)
     if module ~= "KnoxLife" then return end
     if command ~= "spawnJuveniles" and command ~= "spawnStage"
-       and command ~= "provoke" and command ~= "release" then return end
+       and command ~= "provoke" and command ~= "release"
+       and command ~= "nearby" then return end
 
     -- Re-check server-side. The client menu is already admin-gated, but a
     -- client command is just a packet and anyone can send one; a spawn command
@@ -190,6 +241,19 @@ local function onClientCommand(module, command, player, args)
             return
         end
     end
+    if command == "nearby" then
+        local px, py = 0, 0
+        pcall(function() px, py = player:getX(), player:getY() end)
+        local list = KW.nearbyReport(px, py, 20)
+        print(string.format("[KnoxLife] nearby for %s at %d,%d -- %d animal(s) within 20 tiles",
+            tostring(player and player:getUsername() or "?"), px, py, #list))
+        for i = 1, math.min(#list, 15) do
+            print(string.format("[KnoxLife]    %-22s %5.1f tiles  hp=%.2f",
+                list[i].t, list[i].d, list[i].hp))
+        end
+        return
+    end
+
     if command == "release" then
         local n = KW.releaseHeld()
         print(string.format("[KnoxLife] released %d held animal(s) for %s", n,
@@ -230,11 +294,13 @@ local function onClientCommand(module, command, player, args)
                 tostring(player and player:getUsername() or "?")))
             return
         end
-        local ok = KW.spawnStageAt(args.stage, args.group, args.x, args.y)
+        local ok, found = KW.spawnStageAt(args.stage, args.group, args.x, args.y)
         print(string.format("[KnoxLife] spawn %s by %s at %d,%d -- %s",
             tostring(args.stage), tostring(player and player:getUsername() or "?"),
             math.floor(args.x), math.floor(args.y),
-            ok and "placed" or "FAILED (see the reason logged above)"))
+            (not ok) and "FAILED (see the reason logged above)"
+                or ((found or 0) > 0 and "placed and confirmed on the square"
+                                     or "CREATED BUT NOT ON THE SQUARE")))
         return
     end
 
