@@ -66,6 +66,19 @@ function U.skin(panel)
     return panel
 end
 
+--- Width a button needs to hold its own label without clipping it.
+--
+-- ⚠️ Buttons are text too. The table columns here were fixed the day the header
+-- rendered as "per sq mgroup" -- and the BUTTONS were left at constants (90 and
+-- 104 px), so at a larger UI scale "Show on map" overflowed its 104px box and
+-- ran straight through the Close button beside it. Exactly the same bug, six
+-- lines further down the same file, surviving the fix for its own twin.
+--
+-- Nothing in a panel gets a constant width. If it holds a string, measure it.
+function U.btnW(font, label, min)
+    return math.max(min or 0, U.w(font, label) + 26)
+end
+
 --- A filled swatch with a dark seat, so a pale colour still reads on the panel.
 function U.swatch(panel, x, y, size, r, g, b)
     panel:drawRect(x - 1, y - 1, size + 2, size + 2, 0.85, 0, 0, 0)

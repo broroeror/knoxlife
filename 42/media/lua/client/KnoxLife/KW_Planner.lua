@@ -155,12 +155,23 @@ function P:recompute()
         animals = tostring(res.animals),
     }
 
+    -- ⚠️ This used to say "more routes than THE MAP can supply", which is only
+    -- half true and misleads in the confusing direction. A pool is baked by
+    -- tools/gen_routes.py under a --per-class cap, and three of ours sit at
+    -- exactly that cap (squirrel, raccoon, fox at 700) -- those are limited by
+    -- OUR generation run, not by Knox County. The rest stopped short of the cap
+    -- because the generator ran out of habitat, and for those the map really is
+    -- the limit. The panel cannot tell which from here, so it now says the
+    -- accurate thing -- the pool is full -- and names who, which is the part an
+    -- admin can act on.
     self.note = "No species is route-limited here. Group Size changes herd size, not the total."
-    local capped = 0
-    for _, r in ipairs(res.rows) do if r.wanted > r.got then capped = capped + 1 end end
-    if capped > 0 then
-        self.note = capped .. " species want more routes than the map can supply -- "
-                 .. "raising density further will not add those animals."
+    local names = {}
+    for _, r in ipairs(res.rows) do
+        if r.wanted > r.got then names[#names + 1] = r.label end
+    end
+    if #names > 0 then
+        self.note = table.concat(names, ", ") .. " already use every route in "
+                 .. "their pool -- raising density will not add more of them."
     end
 
     self:layout()
@@ -201,7 +212,8 @@ function P:layout()
         x + barW + U.PAD,
         U.PAD * 2 + dialW * 3 + 20,
         U.PAD * 2 + U.w(FONT, self.note),
-        U.PAD * 2 + U.w(HEAD, "KnoxLife -- population planner") + 110)
+        U.PAD * 2 + U.w(HEAD, "KnoxLife -- population planner") + 24
+            + U.btnW(FONT, "Close", 70) + 8 + U.btnW(FONT, "Show on map"))
     self:setWidth(math.ceil(need))
 
     local headH = U.h(HEAD)
@@ -218,8 +230,18 @@ function P:layout()
             cx = cx + cw + 10
         end
     end
-    if self.closeBtn then self.closeBtn:setX(self:getWidth() - U.PAD - 90) end
-    if self.mapBtn then self.mapBtn:setX(self:getWidth() - U.PAD - 90 - 8 - 104) end
+    -- Buttons sized from their labels, then laid out right-to-left from the
+    -- panel edge. Measured, because a fixed 104px box is what let "Show on map"
+    -- print straight through the Close button.
+    local BTNGAP = 8
+    if self.closeBtn and self.mapBtn then
+        local cw = U.btnW(FONT, "Close", 70)
+        local mw = U.btnW(FONT, "Show on map")
+        self.closeBtn:setWidth(cw); self.mapBtn:setWidth(mw)
+        self.closeBtn:setX(self:getWidth() - U.PAD - cw)
+        self.mapBtn:setX(self:getWidth() - U.PAD - cw - BTNGAP - mw)
+        self.btnsW = cw + BTNGAP + mw
+    end
 end
 
 function P:createChildren()
@@ -240,14 +262,14 @@ function P:createChildren()
         self.combos[i] = c
     end
 
-    self.closeBtn = ISButton:new(0, U.PAD, 90, fh + 9, "Close", self,
+    self.closeBtn = ISButton:new(0, U.PAD, U.btnW(FONT, "Close", 70), fh + 9, "Close", self,
         function() self:removeFromUIManager(); P.instance = nil end)
     self.closeBtn:initialise(); self.closeBtn:instantiate()
     if self.closeBtn.enableCancelColor then self.closeBtn:enableCancelColor() end
     self:addChild(self.closeBtn)
 
     -- The table says how many. The map says where. They are the same question.
-    self.mapBtn = ISButton:new(0, U.PAD, 104, fh + 9, "Show on map", self,
+    self.mapBtn = ISButton:new(0, U.PAD, U.btnW(FONT, "Show on map"), fh + 9, "Show on map", self,
         function() KW.MapOverlay.show(self.playerNum or 0) end)
     self.mapBtn:initialise(); self.mapBtn:instantiate()
     self:addChild(self.mapBtn)

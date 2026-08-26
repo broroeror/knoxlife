@@ -204,13 +204,16 @@ function G:rebuild()
     self.tableTop = U.PAD + self.headH + 8 + self.fh + 6
     local w = U.PAD * 2 + SWATCH + 8 + self.nameW + 18 + self.countW
     w = math.max(w, U.PAD * 2 + U.w(HEAD, "Knox: routes on the map"),
-                    U.PAD * 2 + U.w(FONT, "click a row to hide that species"))
+                    U.PAD * 2 + U.w(FONT, "click a row to hide that species"),
+                    U.PAD * 2 + U.btnW(FONT, "Show all") + 10 + U.btnW(FONT, "Close", 70))
     self:setWidth(math.ceil(w))
     self:setHeight(math.ceil(self.tableTop + self.row * #self.rows
                              + self.fh + 10 + self.row + U.PAD))
     if self.closeBtn then
         self.closeBtn:setY(self:getHeight() - U.PAD - self.row)
-        self.closeBtn:setX(self:getWidth() - U.PAD - 90)
+        local cw = U.btnW(FONT, "Close", 70)
+        self.closeBtn:setWidth(cw)
+        self.closeBtn:setX(self:getWidth() - U.PAD - cw)
     end
     if self.allBtn then self.allBtn:setY(self:getHeight() - U.PAD - self.row) end
 end
@@ -220,12 +223,12 @@ function G:createChildren()
     U.skin(self)
     local fh = U.h(FONT)
 
-    self.allBtn = ISButton:new(U.PAD, 0, 78, fh + 8, "Show all", self,
+    self.allBtn = ISButton:new(U.PAD, 0, U.btnW(FONT, "Show all"), fh + 8, "Show all", self,
         function() M.hidden = {} end)
     self.allBtn:initialise(); self.allBtn:instantiate()
     self:addChild(self.allBtn)
 
-    self.closeBtn = ISButton:new(0, 0, 90, fh + 8, "Close", self,
+    self.closeBtn = ISButton:new(0, 0, U.btnW(FONT, "Close", 70), fh + 8, "Close", self,
         function() M.hide() end)
     self.closeBtn:initialise(); self.closeBtn:instantiate()
     if self.closeBtn.enableCancelColor then self.closeBtn:enableCancelColor() end
