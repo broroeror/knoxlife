@@ -71,10 +71,39 @@ function KW.setThreat(id, threat, courage)
     return true
 end
 
+-- ⚠️ getAnimalType() returns a LIFE-STAGE id, not a group id.
+--
+-- A live fox reports `kwc_foxvixen`, `kwc_foxdog` or `kwc_foxkit`; a rabbit
+-- reports `rabdoe` or `rabbuck`. THREAT and COURAGE are keyed by the MIGRATION
+-- GROUP -- `kwc_fox`, `rabbit` -- because that is the level a species is
+-- declared at, and asking one about the other silently returns nil.
+--
+-- Which meant every threat lookup returned 0, every predator failed the
+-- `threat > 0` test, and predation never fired once. Our own nearby report had
+-- been printing `kwc_foxvixen` for hours.
+local groupCache = {}
+
+local function groupOf(stageId)
+    local hit = groupCache[stageId]
+    if hit ~= nil then return hit end
+    local found = stageId                    -- already a group id, or unknown
+    for gid, g in pairs(MigrationGroupDefinitions or {}) do
+        if g and (g.female == stageId or g.male == stageId or g.baby == stageId) then
+            found = gid
+            break
+        end
+    end
+    groupCache[stageId] = found
+    return found
+end
+
+--- Exposed so the tests can prove a stage id resolves, without a live world.
+KW.groupOf = groupOf
+
 local function threatOf(a)
     local ok, t = pcall(function() return a:getAnimalType() end)
     if not ok or not t then return 0 end
-    local base = KW.THREAT[tostring(t)]
+    local base = KW.THREAT[groupOf(tostring(t))]
     if not base then return 0 end
     -- A baby counts for a third, and a wounded animal for what is left of it.
     -- Predators go for the weak, which is both true and better drama.
@@ -194,7 +223,7 @@ end
 ---     attack if  sum(my side)  >=  sum(their side) * my courage
 local function willEngage(predator, prey, allies, rivals)
     local ok, t = pcall(function() return predator:getAnimalType() end)
-    local courage = ok and t and KW.COURAGE[tostring(t)]
+    local courage = ok and t and KW.COURAGE[groupOf(tostring(t))]
     if not courage then return false end          -- prey never initiate
     return allies >= rivals * courage
 end
@@ -234,7 +263,7 @@ function KW.huntTick()
                             if d <= P.SENSE and it.threat > 0 then
                                 local okp, tp = pcall(function() return other:getAnimalType() end)
                                 local sameSide = okp and tp
-                                    and KW.COURAGE[tostring(tp)] ~= nil
+                                    and KW.COURAGE[groupOf(tostring(tp))] ~= nil
                                 if sameSide then
                                     -- another predator: counts toward the pack
                                     allies = allies + it.threat
