@@ -72,8 +72,17 @@ local function registerCoreSpecies()
     -- and at the wrong elevation. The swamp rabbit stays: it is a real Kentucky
     -- species and it suits the water the routes already favour.
     KW.registerSpecies("rabbit", {
-        density = 64.0,   -- animals per sq mi. order of magnitude only: 3-5 per acre in good cover,
-        -- discounted heavily for the map's mix of habitat
+        -- 3-5 per acre in good cover biologically, and this declared 64 on that
+        -- basis. But the rabbit pool holds 428 routes and 64 asked for 1,723,
+        -- so rabbits sat pinned at the ceiling on every one of the five density
+        -- settings -- the dial moved nothing, in either direction, ever, and
+        -- the planner reported a conflict at the mod's own defaults.
+        --
+        -- 15.8 is what the shipped pool delivers: 428 routes x 3.3 per group
+        -- / 88.83 sq mi = 15.9, set a shade under so Realistic clears without
+        -- a warning. DELIVERABLE, not biological -- see the squirrel's note in
+        -- KnoxLifeSquirrels/Squirrel_Species.lua for the full reasoning.
+        density = 15.8,
         female = "rabdoe", male = "rabbuck", baby = "rabkitten",
         minAnimal = 1, maxAnimal = 3, maxMale = 1, babyChance = 40,
         possibleBreed = "swamp,cottontail",
