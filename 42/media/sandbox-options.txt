@@ -143,3 +143,10 @@ option KnoxLife.RaccoonGroupSize
     translation = KnoxLife_RaccoonGroupSize,
     valueTranslation = KnoxLife_SpeciesScale,
 }
+option KnoxLife.Predation
+{
+    type = boolean,
+    default = true,
+    page = KnoxLife,
+    translation = KnoxLife_Predation,
+}

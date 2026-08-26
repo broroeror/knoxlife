@@ -251,6 +251,59 @@ calling internals.
 
 ---
 
+## 5b. The food chain
+
+Two numbers put your species in it. Same shape as `density`: nothing is shared,
+so nothing is stolen, and a bear that declares a threat is immediately something
+every existing predator can reason about.
+
+```lua
+KW.setThreat("myaddon_bear", 12, 1.1)   -- threat, courage
+KW.setThreat("myaddon_vole", 0.5)       -- no courage: never initiates
+```
+
+| | |
+|---|---|
+| `threat` | what you are worth in a fight. Summed on **both** sides. |
+| `courage` | the advantage you need before you will **start** one. Omit it and your species is prey. |
+
+The rule, entire:
+
+```
+attack if   sum(my side threat)  >=  sum(their side threat) * my courage
+```
+
+Threat is scaled at runtime by life stage (a baby counts about a third) and by
+remaining health, so predators favour the wounded.
+
+⚠️ **Do not give anything a `threat` for players or zombies.** Stage 2 is prey
+only, deliberately — see STATUS 7j.
+
+### Replacing how a bite is delivered
+
+`KW.Predation.strike(predator, prey)` decides what a bite *looks like*;
+everything else decides whether one happens. It is the seam a Java addon
+overrides — with ZombieBuddy present you can gain a real attack animation
+(STATUS 7h) and play it before calling through:
+
+```lua
+local prev                       -- ⚠️ declare on its own line
+prev = KW.setStrikeHandler(function(pred, prey)
+    playTheLunge(pred)
+    return prev(pred, prey)      -- keep the damage, add the animation
+end)
+```
+
+⚠️ `local prev = KW.setStrikeHandler(function() ... prev ... end)` looks the same
+and is broken: a Lua local is only in scope *after* its own statement, so the
+closure captures a nil `prev`, the call-through never happens, and your addon
+silently does no damage while appearing to work.
+
+`setStrikeHandler` returns the handler you replaced precisely so that chain is
+possible. Return `true` from a strike when the prey died.
+
+---
+
 ## 6. Building something that's not an animal
 
 `registerSpecies` writes into `MigrationGroupDefinitions`, which is Project

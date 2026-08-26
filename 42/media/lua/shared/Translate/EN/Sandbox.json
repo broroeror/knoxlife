@@ -4,7 +4,7 @@
     "Sandbox_KnoxLifeAnimals": "KnoxLife: Animals",
     "Sandbox_KnoxLifeAnimals_tooltip": "Per-species settings. Each animal has its own target, so turning one off or doubling it does not take anything from the others. Add-on species appear here too.",
     "Sandbox_KnoxLife_RouteDensity": "Wildlife density",
-    "Sandbox_KnoxLife_RouteDensity_tooltip": "The master dial for how many animals exist. Realistic places each species at its actual recorded 1990s Kentucky density, so deer, turkey and raccoon reach their true numbers. Rabbits and squirrels are the exception and stay below theirs, because the map has nowhere near enough of the habitat they need. Only takes effect on a new save.",
+    "Sandbox_KnoxLife_RouteDensity_tooltip": "The master dial for how many animals exist. Realistic places each species at the density this map can actually sustain, which for deer, turkey and raccoon is their true recorded 1990s Kentucky figure. Rabbits and squirrels are declared at what their habitat here supports rather than their real-world numbers, so that the dial moves them like everything else. Only takes effect on a new save.",
     "Sandbox_KnoxLife_RouteDensity_option1": "1/4 realistic",
     "Sandbox_KnoxLife_RouteDensity_option2": "1/2 realistic",
     "Sandbox_KnoxLife_RouteDensity_option3": "Realistic - 1993 Kentucky",
@@ -57,5 +57,7 @@
     "Sandbox_KnoxLife_RaccoonRoutes": "Raccoons: number of groups",
     "Sandbox_KnoxLife_RaccoonRoutes_tooltip": "Raccoons, in bottomland and along water, and abundant. Multiplies this species' population, on top of Wildlife density. Realistic is roughly 890 across the map. Does nothing unless raccoons are turned on above.",
     "Sandbox_KnoxLife_RaccoonGroupSize": "Raccoons: animals per group",
-    "Sandbox_KnoxLife_RaccoonGroupSize_tooltip": "Multiplies the size of each raccoon group, on top of Group size. This does NOT change how many raccoons exist: the group count is divided to match."
+    "Sandbox_KnoxLife_RaccoonGroupSize_tooltip": "Multiplies the size of each raccoon group, on top of Group size. This does NOT change how many raccoons exist: the group count is divided to match.",
+    "Sandbox_KnoxLife_Predation": "Predators hunt prey",
+    "Sandbox_KnoxLife_Predation_tooltip": "Foxes, coyotes and bobcats hunt rabbits, squirrels, raccoons and turkeys, and a pack will take on more than a lone animal will. They do not attack you."
 }
