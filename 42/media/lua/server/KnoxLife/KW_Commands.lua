@@ -18,12 +18,45 @@
 KnoxLife = KnoxLife or {}
 local KW = KnoxLife
 
+-- group is the MIGRATION group id, which is where possibleBreed lives; id is
+-- the life-stage id that actually gets spawned. They are not the same string
+-- and the difference matters -- see breedFor below.
 local JUVENILES = {
-    { id = "kwc_foxkit",       label = "fox kit" },
-    { id = "kwc_coyotepup",    label = "coyote pup" },
-    { id = "kwc_bobcatkitten", label = "bobcat kitten" },
-    { id = "kwc_squirrelkit",  label = "squirrel kit" },
+    { id = "kwc_foxkit",       group = "kwc_fox",      label = "fox kit" },
+    { id = "kwc_coyotepup",    group = "kwc_coyote",   label = "coyote pup" },
+    { id = "kwc_bobcatkitten", group = "kwc_bobcat",   label = "bobcat kitten" },
+    { id = "kwc_squirrelkit",  group = "kwc_squirrel", label = "squirrel kit" },
 }
+
+-- Every stage our mods ship, for the per-species spawn menu. Adults included,
+-- because "I cannot spawn a fox" needs to be reproducible through a code path
+-- that LOGS, rather than through the vanilla debug menu that does not.
+KW.STAGES = {
+    { group = "kwc_fox",      label = "Fox",
+      adult = "kwc_foxvixen",    male = "kwc_foxdog",      baby = "kwc_foxkit" },
+    { group = "kwc_coyote",   label = "Coyote",
+      adult = "kwc_coyotefemale", male = "kwc_coyotemale",  baby = "kwc_coyotepup" },
+    { group = "kwc_bobcat",   label = "Bobcat",
+      adult = "kwc_bobcatfemale", male = "kwc_bobcatmale",  baby = "kwc_bobcatkitten" },
+    { group = "kwc_squirrel", label = "Squirrel",
+      adult = "kwc_squirrelfemale", male = "kwc_squirrelmale", baby = "kwc_squirrelkit" },
+}
+
+--- The breed to spawn a stage with.
+--
+-- ⚠️ Do not pass nil. addAnimal accepts it and then AnimalData picks for itself,
+-- which threw `IndexOutOfBoundsException: Index 1 out of bounds for length 1`
+-- for two of four juveniles while the other two spawned fine. Our species each
+-- define exactly ONE breed, named "default", so there is nothing to gain from
+-- letting the engine choose and a crash to lose.
+--
+-- Read from the migration group rather than hardcoded, so an addon species with
+-- real breeds gets one of its own.
+local function breedFor(stageId, groupId)
+    local mg = MigrationGroupDefinitions and MigrationGroupDefinitions[groupId]
+    local names = mg and mg.possibleBreed or "default"
+    return KW.pickBreed and KW.pickBreed(stageId, names) or nil
+end
 
 --- Spawn one of each juvenile around (x, y). Returns placed, list-of-failures.
 ---
@@ -35,7 +68,7 @@ function KW.spawnJuvenilesAt(x, y)
     for i, j in ipairs(JUVENILES) do
         -- Two tiles apart, so all four are visible at once and can be compared
         -- against each other and against any adult that wanders in.
-        local breed = KW.pickBreed and KW.pickBreed(j.id, nil) or nil
+        local breed = breedFor(j.id, j.group)
         if KW.spawnOne and KW.spawnOne(j.id, breed, x + (i * 2), y) then
             placed = placed + 1
         else
@@ -45,9 +78,55 @@ function KW.spawnJuvenilesAt(x, y)
     return placed, missed
 end
 
+--- Spawn one named stage at a point. Returns placed, why-not.
+function KW.spawnStageAt(stageId, groupId, x, y)
+    local breed = breedFor(stageId, groupId)
+    if KW.spawnOne and KW.spawnOne(stageId, breed, x, y) then return true end
+    return false
+end
+
+--- Make the nearest predator attack the player.
+--
+-- This exists to answer the one open question in STATUS 7g -- whether goAttack
+-- reaches a target we hand it -- without needing to survive a fight first. It
+-- is also the only reliable way to SEE stage 1 aggression, which otherwise only
+-- shows up when an animal is hurt and chooses not to flee.
+function KW.provokeNearest(player, radius)
+    if not player then return nil end
+    radius = radius or 20
+    local best, bestD
+    local cell = getCell()
+    if not cell then return nil end
+    local px, py = player:getX(), player:getY()
+    for x = math.floor(px - radius), math.floor(px + radius) do
+        for y = math.floor(py - radius), math.floor(py + radius) do
+            local sq = cell:getGridSquare(x, y, 0)
+            local animals = sq and sq.getAnimals and sq:getAnimals()
+            if animals then
+                for i = 0, animals:size() - 1 do
+                    local a = animals:get(i)
+                    local t = a and a.getAnimalType and a:getAnimalType()
+                    if t and string.find(tostring(t), "^kwc_") and not a:isDead() then
+                        local d = (a:getX() - px) ^ 2 + (a:getY() - py) ^ 2
+                        if not bestD or d < bestD then best, bestD = a, d end
+                    end
+                end
+            end
+        end
+    end
+    if not best then return nil end
+    local ok, err = pcall(function() best:getBehavior():goAttack(player) end)
+    if not ok then
+        KW.log("provoke: goAttack refused this target -- " .. tostring(err))
+        return nil
+    end
+    return tostring(best:getAnimalType()), math.sqrt(bestD)
+end
+
 local function onClientCommand(module, command, player, args)
     if module ~= "KnoxLife" then return end
-    if command ~= "spawnJuveniles" then return end
+    if command ~= "spawnJuveniles" and command ~= "spawnStage"
+       and command ~= "provoke" then return end
 
     -- Re-check server-side. The client menu is already admin-gated, but a
     -- client command is just a packet and anyone can send one; a spawn command
@@ -67,7 +146,46 @@ local function onClientCommand(module, command, player, args)
             return
         end
     end
+    if command == "provoke" then
+        local who, dist = KW.provokeNearest(player, 20)
+        print(string.format("[KnoxLife] provoke by %s -- %s",
+            tostring(player and player:getUsername() or "?"),
+            who and string.format("%s at %.1f tiles told to attack", who, dist)
+                or "no KnoxLife animal within 20 tiles"))
+        return
+    end
+
     if not (args and args.x and args.y) then return end
+
+    if command == "spawnStage" then
+        -- Validate against our own table. The admin check above already gates
+        -- this, but a client command is just a packet and args.stage is a
+        -- string the sender chose: without this the server would spawn any
+        -- animal type it was asked for. Same reasoning as the access-level
+        -- re-check -- a spawn command that trusts its arguments is a cheat
+        -- vector in a public mod.
+        local known = false
+        for _, sp in ipairs(KW.STAGES) do
+            if sp.group == args.group
+               and (args.stage == sp.adult or args.stage == sp.male
+                    or args.stage == sp.baby) then
+                known = true
+                break
+            end
+        end
+        if not known then
+            print(string.format("[KnoxLife] refused spawn of unknown stage '%s' in group '%s' from %s",
+                tostring(args.stage), tostring(args.group),
+                tostring(player and player:getUsername() or "?")))
+            return
+        end
+        local ok = KW.spawnStageAt(args.stage, args.group, args.x, args.y)
+        print(string.format("[KnoxLife] spawn %s by %s at %d,%d -- %s",
+            tostring(args.stage), tostring(player and player:getUsername() or "?"),
+            math.floor(args.x), math.floor(args.y),
+            ok and "placed" or "FAILED (see the reason logged above)"))
+        return
+    end
 
     local placed, missed = KW.spawnJuvenilesAt(args.x, args.y)
     print(string.format("[KnoxLife] spawnJuveniles by %s at %d,%d -- %d/%d placed%s",

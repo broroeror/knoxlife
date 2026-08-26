@@ -43,12 +43,44 @@ local JUVENILES = {
     { id = "kwc_squirrelkit",  label = "squirrel kit" },
 }
 
+-- Duplicated from KW_Commands rather than shared, because that file is
+-- server-only and this menu is client-side. check_lua.sh asserts both lists
+-- against the shipped definitions, so they cannot drift apart silently.
+local STAGES = {
+    { group = "kwc_fox",      label = "Fox",
+      female = "kwc_foxvixen",      male = "kwc_foxdog",       baby = "kwc_foxkit" },
+    { group = "kwc_coyote",   label = "Coyote",
+      female = "kwc_coyotefemale",  male = "kwc_coyotemale",   baby = "kwc_coyotepup" },
+    { group = "kwc_bobcat",   label = "Bobcat",
+      female = "kwc_bobcatfemale",  male = "kwc_bobcatmale",   baby = "kwc_bobcatkitten" },
+    { group = "kwc_squirrel", label = "Squirrel",
+      female = "kwc_squirrelfemale", male = "kwc_squirrelmale", baby = "kwc_squirrelkit" },
+}
+
 local function onSpawnJuveniles(square, playerObj)
     if not (square and playerObj) then return end
     sendClientCommand(playerObj, "KnoxLife", "spawnJuveniles",
                       { x = square:getX(), y = square:getY(), z = square:getZ() })
     if HaloTextHelper then
         HaloTextHelper.addGoodText(playerObj, "Asked the server for juveniles")
+    end
+end
+
+local function onSpawnStage(square, playerObj, stageId, groupId)
+    if not (square and playerObj) then return end
+    sendClientCommand(playerObj, "KnoxLife", "spawnStage",
+                      { x = square:getX(), y = square:getY(), z = square:getZ(),
+                        stage = stageId, group = groupId })
+    if HaloTextHelper then
+        HaloTextHelper.addGoodText(playerObj, "Asked for a " .. tostring(stageId))
+    end
+end
+
+local function onProvoke(square, playerObj)
+    if not playerObj then return end
+    sendClientCommand(playerObj, "KnoxLife", "provoke", {})
+    if HaloTextHelper then
+        HaloTextHelper.addGoodText(playerObj, "Provoking the nearest predator")
     end
 end
 
@@ -77,6 +109,29 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
     if isClient and isClient() then
         context:addOption("Knox: spawn one of each juvenile here", square,
                           onSpawnJuveniles, playerObj)
+
+        -- Per-species spawning, so "I cannot spawn a fox" is reproducible
+        -- through a path that logs its reason. The vanilla debug spawner does
+        -- not, which is why that report had no evidence behind it.
+        local spawnOpt = context:addOption("Knox: spawn one of...", nil, nil)
+        local spawnMenu = context:getNew(context)
+        context:addSubMenu(spawnOpt, spawnMenu)
+        for _, sp in ipairs(STAGES) do
+            local one = spawnMenu:addOption(sp.label, nil, nil)
+            local sub = spawnMenu:getNew(spawnMenu)
+            spawnMenu:addSubMenu(one, sub)
+            for _, st in ipairs({ { "female", "female" }, { "male", "male" },
+                                  { "baby", "juvenile" } }) do
+                sub:addOption(st[2], square, onSpawnStage, playerObj,
+                              sp[st[1]], sp.group)
+            end
+        end
+
+        -- Answers the open question in STATUS 7g -- whether goAttack reaches a
+        -- target we hand it -- and is the only reliable way to see stage 1
+        -- aggression, which otherwise needs an animal to survive a hit first.
+        context:addOption("Knox: provoke nearest predator", square,
+                          onProvoke, playerObj)
     end
 
     -- The planner is read-only, client-side, and needs no server round trip --

@@ -80,12 +80,42 @@ function KW.spawnOne(animalType, breed, x, y)
 
     local sq = getCell() and getCell():getGridSquare(x, y, 0)
     if not sq then return false end          -- chunk not loaded, skip quietly
+
+    -- ⚠️ SAY WHY IT FAILED. These two pcalls used to swallow everything and
+    -- return a bare false, so a Java exception out of addAnimal presented as
+    -- "the animal did not appear" and nothing else -- which is how an
+    -- IndexOutOfBounds inside AnimalData went unexplained through a whole
+    -- testing session. A silent pcall is a lost bug.
+    --
+    -- Deduplicated per animalType, because the reseeder calls this in bulk and
+    -- one bad species would otherwise fill the log every tick.
     local ok, animal = pcall(function()
         return addAnimal(getCell(), x, y, 0, animalType, breed)
     end)
-    if not ok or not animal then return false end
-    local ok2 = pcall(function() animal:addToWorld() end)
-    return ok2 and true or false
+    if not ok or not animal then
+        KW._spawnFailed = KW._spawnFailed or {}
+        local why = ok and "addAnimal returned nothing" or tostring(animal)
+        local key = tostring(animalType) .. "|" .. why
+        if not KW._spawnFailed[key] then
+            KW._spawnFailed[key] = true
+            KW.log(string.format("spawn of '%s' failed (breed %s): %s",
+                tostring(animalType), tostring(breed), why))
+        end
+        return false
+    end
+
+    local ok2, err = pcall(function() animal:addToWorld() end)
+    if not ok2 then
+        KW._spawnFailed = KW._spawnFailed or {}
+        local key = tostring(animalType) .. "|addToWorld|" .. tostring(err)
+        if not KW._spawnFailed[key] then
+            KW._spawnFailed[key] = true
+            KW.log(string.format("'%s' was created but addToWorld failed: %s",
+                tostring(animalType), tostring(err)))
+        end
+        return false
+    end
+    return true
 end
 local spawnOne = KW.spawnOne
 
