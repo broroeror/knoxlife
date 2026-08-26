@@ -30,13 +30,24 @@ local KW = KnoxLife
 --- Feature flags. Every one is FALSE until an addon turns it on, and every
 --- caller must work with all of them false -- that is what "the core is
 --- playable alone" means in code rather than in a document.
-KW.java = KW.java or {
+--- ⚠️ FILLED PER KEY, never `KW.java = KW.java or {...}`. This file is `client`
+--- and KW_AnimSets is `shared`, so the other one may have created the table
+--- already -- and a wholesale `or` would then keep its table and leave every
+--- flag below unset. They would read as nil rather than false, which behaves
+--- identically at `if not KW.java.x` and differently everywhere that iterates,
+--- so `KW.javaMissing()` would quietly stop reporting them.
+KW.java = KW.java or {}
+local DEFAULTS = {
     attackAnimation = false,   -- a real lunge instead of walking into the target
     animationTuning = false,   -- per-species cadence (m_SpeedScale)
     smoothPursuit   = false,   -- continuous re-path instead of stop-start
     huntingSprint   = false,   -- sprint only while hunting, not always
     liveSettings    = false,   -- apply sandbox changes without a restart
+    ownAnimSets     = false,   -- our own AnimSets + actiongroups, see KW_AnimSets
 }
+for name, value in pairs(DEFAULTS) do
+    if KW.java[name] == nil then KW.java[name] = value end
+end
 
 local ZB = "ZombieBuddy"
 

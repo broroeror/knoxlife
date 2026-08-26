@@ -365,6 +365,47 @@ first-class helper is on the roadmap; until then, copy the fox.
 
 ---
 
+## 8. Declaring your own animation set (optional, dormant)
+
+If your animal ships its own `AnimSets/<group>/` **and** `actiongroups/<group>/`
+pair, declare it so an optional Java addon can switch it on:
+
+```lua
+-- Feature-detected, not version-gated: this is additive, so API_VERSION stays 1
+-- and an older Knox Life simply skips it.
+if KW.registerAnimSet then
+    KW.registerAnimSet("mymod_bear", {
+        animset  = "mymod_bear",      -- the directory name, under BOTH halves
+        fallback = "raccoon",         -- the base-game set your animals use today
+        stages   = { "mymod_bearcub", "mymod_bearsow", "mymod_bearboar" },
+        attack   = true,              -- your pair adds an attack state
+    })
+end
+```
+
+### `KW.registerAnimSet(groupId, spec) -> boolean`
+
+| field | required | meaning |
+|---|---|---|
+| `animset` | ✅ | directory name, present under `AnimSets/` **and** `actiongroups/` |
+| `fallback` | ✅ | the **base-game** set your animals use while dormant, and the only thing a revert can restore |
+| `stages` | ✅ | animal **stage** ids — `animalDefs` is keyed by stage, never by migration group |
+| `attack` | | `true` only if your pair really ships an attack state. Defaults to **false** |
+
+> ⛔ **This does not enable anything, and you must not try to.** Setting
+> `animset` in your definitions file instead is the one mistake that reaches
+> players: `ActionGroup` resolves through `getMediaFile`, which cannot see mods,
+> so from a mod it is *always* half a pair — and half a pair means no action
+> state machine. The next hit reaction, from a swing or even a shove, throws on a
+> null `currentState` and drops the player to the main menu. Ship the directories,
+> declare them here, and leave `animset` alone.
+
+`KW.animsetPlan()` returns the flat list an addon applies — one entry per stage,
+groups in sorted order, `{ stage, from, to, attack }`. `KW.animsetsActive()` is
+false until an addon has *verified* its patch and set `KW.java.ownAnimSets`; ask
+that rather than `KW.javaState()`, because the agent running is not evidence the
+patch took. The whole contract is in `ADDON.md`.
+
 ## Sharp edges, collected
 
 - Register at file scope; the window closes at world load.
