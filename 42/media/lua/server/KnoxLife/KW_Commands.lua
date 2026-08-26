@@ -69,7 +69,7 @@ function KW.spawnJuvenilesAt(x, y)
         -- Two tiles apart, so all four are visible at once and can be compared
         -- against each other and against any adult that wanders in.
         local breed = breedFor(j.id, j.group)
-        if KW.spawnOne and KW.spawnOne(j.id, breed, x + (i * 2), y) then
+        if KW.spawnStageAt(j.id, j.group, x + (i * 2), y) then
             placed = placed + 1
         else
             missed[#missed + 1] = j.label
@@ -78,11 +78,55 @@ function KW.spawnJuvenilesAt(x, y)
     return placed, missed
 end
 
---- Spawn one named stage at a point. Returns placed, why-not.
+-- Animals spawned by an admin are HELD STILL until released.
+--
+-- ⚠️ Without this an admin spawn looks like a failure. Every species we ship is
+-- `wild = true`, and vanilla's own comment on that flag says a wild animal
+-- "will always flee humans" -- so one created at your feet bolts before you can
+-- focus on it. The server logs "placed", nothing errors, and you see an empty
+-- field. That is exactly what happened while testing the fox, and it is why the
+-- juveniles were "never seen" for two days.
+--
+-- The whole point of spawning one is to LOOK at it, so it holds until told
+-- otherwise. Never applied to the reseeder -- only to this menu.
+local held = {}
+
+local function holdStill(animal)
+    if not animal then return end
+    pcall(function() animal:getBehavior():setBlockMovement(true) end)
+    held[#held + 1] = animal
+end
+
+--- Let every held animal go, and forget them.
+function KW.releaseHeld()
+    local n = 0
+    for _, a in ipairs(held) do
+        local ok = pcall(function() a:getBehavior():setBlockMovement(false) end)
+        if ok then n = n + 1 end
+    end
+    held = {}
+    return n
+end
+
+function KW.heldCount() return #held end
+
+--- Spawn one named stage at a point, held still. Returns true if it placed.
 function KW.spawnStageAt(stageId, groupId, x, y)
     local breed = breedFor(stageId, groupId)
-    if KW.spawnOne and KW.spawnOne(stageId, breed, x, y) then return true end
-    return false
+    if not (KW.spawnOne and KW.spawnOne(stageId, breed, x, y)) then return false end
+    -- spawnOne does not hand the animal back, so find what just arrived.
+    local sq = getCell and getCell():getGridSquare(x, y, 0)
+    local list = sq and sq.getAnimals and sq:getAnimals()
+    if list then
+        local n = 0
+        pcall(function() n = list:size() end)
+        for i = 0, n - 1 do
+            local a = list:get(i)
+            local ok, t = pcall(function() return a:getAnimalType() end)
+            if ok and tostring(t) == tostring(stageId) then holdStill(a) end
+        end
+    end
+    return true
 end
 
 --- Make the nearest predator attack the player.
@@ -126,7 +170,7 @@ end
 local function onClientCommand(module, command, player, args)
     if module ~= "KnoxLife" then return end
     if command ~= "spawnJuveniles" and command ~= "spawnStage"
-       and command ~= "provoke" then return end
+       and command ~= "provoke" and command ~= "release" then return end
 
     -- Re-check server-side. The client menu is already admin-gated, but a
     -- client command is just a packet and anyone can send one; a spawn command
@@ -146,6 +190,13 @@ local function onClientCommand(module, command, player, args)
             return
         end
     end
+    if command == "release" then
+        local n = KW.releaseHeld()
+        print(string.format("[KnoxLife] released %d held animal(s) for %s", n,
+            tostring(player and player:getUsername() or "?")))
+        return
+    end
+
     if command == "provoke" then
         local who, dist = KW.provokeNearest(player, 20)
         print(string.format("[KnoxLife] provoke by %s -- %s",

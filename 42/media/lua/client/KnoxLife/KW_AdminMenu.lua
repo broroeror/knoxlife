@@ -76,6 +76,14 @@ local function onSpawnStage(square, playerObj, stageId, groupId)
     end
 end
 
+local function onRelease(square, playerObj)
+    if not playerObj then return end
+    sendClientCommand(playerObj, "KnoxLife", "release", {})
+    if HaloTextHelper then
+        HaloTextHelper.addGoodText(playerObj, "Released held animals")
+    end
+end
+
 local function onProvoke(square, playerObj)
     if not playerObj then return end
     sendClientCommand(playerObj, "KnoxLife", "provoke", {})
@@ -132,6 +140,12 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
         -- aggression, which otherwise needs an animal to survive a hit first.
         context:addOption("Knox: provoke nearest predator", square,
                           onProvoke, playerObj)
+
+        -- Spawned animals are held still so they can be looked at; every
+        -- species we ship is `wild = true`, which vanilla documents as "will
+        -- always flee humans". This lets them go.
+        context:addOption("Knox: release held animals", square,
+                          onRelease, playerObj)
     end
 
     -- The planner is read-only, client-side, and needs no server round trip --
