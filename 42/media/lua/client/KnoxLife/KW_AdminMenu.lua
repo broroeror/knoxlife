@@ -27,6 +27,7 @@
 require "KnoxLife/KW_DebugMenu"
 require "KnoxLife/KW_Planner"
 require "KnoxLife/KW_MapOverlay"
+require "KnoxLife/KW_JavaBridge"
 
 KnoxLife = KnoxLife or {}
 local KW = KnoxLife
