@@ -45,6 +45,25 @@ P.BITE_COOLDOWN = 1
 -- most of what makes a food chain read as one.
 P.BITE = 0.34
 
+-- Stress a hunting animal is topped up to, and by how much per tick.
+--
+-- ⚠️ THIS IS HOW THE RUN ANIMATION IS REACHED. The run node inside the walk
+-- state is gated on an engine boolean, `animalRunning`, and there is no way to
+-- set that from Lua that the engine will not immediately overwrite. But in
+-- IsoAnimal the bytecode sets it TRUE on the instruction right after
+-- `changeStress(float)` -- a stressed animal runs. `changeStress` IS public and
+-- vanilla Lua already calls it (ISShearAnimal.lua:29).
+--
+-- So rather than fight the engine for the variable, give it the condition it
+-- already reacts to. Raising the species' `speed` made a hunting predator move
+-- quickly; this is what makes it LOOK like it is moving quickly.
+--
+-- Held below the point where an animal panics -- vanilla treats 40+ as
+-- meaningfully stressed (ISShearAnimal) -- because a predator on a hunt should
+-- read as excited, not as terrified.
+P.HUNT_STRESS = 55
+P.STRESS_STEP = 6
+
 --- threat: what you are worth in a fight, summed on both sides.
 --- courage: the advantage you need before you will START one. No courage means
 --- this species never initiates -- which is what makes prey prey.
@@ -302,7 +321,18 @@ function KW.huntAdvance()
                 local d = math.sqrt((px - qx) ^ 2 + (py - qy) ^ 2)
                 if d > P.SENSE * 1.5 then
                     hunts[id] = nil                     -- it got away
-                elseif d <= P.REACH and now >= (h.nxt or 0) then
+                else
+                    -- Keep it keyed up while the chase is on, so the engine
+                    -- keeps choosing the run cycle. Costs one call per hunting
+                    -- animal per tick, and there are a handful of hunts.
+                    local st = 0
+                    pcall(function() st = h.pred:getStress() or 0 end)
+                    if st < P.HUNT_STRESS then
+                        pcall(function() h.pred:changeStress(P.STRESS_STEP) end)
+                    end
+                end
+
+                if d <= P.REACH and now >= (h.nxt or 0) then
                     h.nxt = now + P.BITE_COOLDOWN
                     local okS, died = pcall(P.strike, h.pred, h.prey)
                     if okS and died then
