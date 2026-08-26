@@ -228,7 +228,7 @@ local function onClientCommand(module, command, player, args)
     if module ~= "KnoxLife" then return end
     if command ~= "spawnJuveniles" and command ~= "spawnStage"
        and command ~= "provoke" and command ~= "release"
-       and command ~= "nearby" then return end
+       and command ~= "nearby" and command ~= "sweep" then return end
 
     -- Re-check server-side. The client menu is already admin-gated, but a
     -- client command is just a packet and anyone can send one; a spawn command
@@ -248,6 +248,14 @@ local function onClientCommand(module, command, player, args)
             return
         end
     end
+    if command == "sweep" then
+        local n = 0
+        pcall(function() n = KW.sweepBrokenAnimals() or 0 end)
+        print(string.format("[KnoxLife] sweep by %s -- removed %d broken animal(s)",
+            tostring(player and player:getUsername() or "?"), n))
+        return
+    end
+
     if command == "nearby" then
         local px, py = 0, 0
         pcall(function() px, py = player:getX(), player:getY() end)

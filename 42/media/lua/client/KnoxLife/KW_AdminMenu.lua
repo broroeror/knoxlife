@@ -84,6 +84,14 @@ local function onRelease(square, playerObj)
     end
 end
 
+local function onSweep(square, playerObj)
+    if not playerObj then return end
+    sendClientCommand(playerObj, "KnoxLife", "sweep", {})
+    if HaloTextHelper then
+        HaloTextHelper.addGoodText(playerObj, "Sweeping broken animals")
+    end
+end
+
 local function onNearby(square, playerObj)
     if not playerObj then return end
     sendClientCommand(playerObj, "KnoxLife", "nearby", {})
@@ -160,6 +168,11 @@ function KnoxLifeAdminMenu.doMenu(player, context, worldobjects, test)
         -- tiles, with distance and health, to the server log.
         context:addOption("Knox: what is near me (server log)", square,
                           onNearby, playerObj)
+
+        -- Removes animals whose definition did not attach. One of those throws
+        -- out of IsoAnimal.update every frame for as long as it exists.
+        context:addOption("Knox: sweep broken animals", square,
+                          onSweep, playerObj)
     end
 
     -- The planner is read-only, client-side, and needs no server round trip --

@@ -331,7 +331,36 @@ function KW.sweepBrokenAnimals()
             if okt and t then
                 pcall(function() def = AnimalDefinitions.getDef(t) end)
             end
-            if not def then doomed[#doomed + 1] = a end
+
+            -- ⚠️ ASK THE ANIMAL, NOT THE TABLE. Checking only that a definition
+            -- EXISTS for this type misses the case that actually took a server
+            -- down: the entry is present and healthy while the animal's own
+            -- `adef` field is null, so the table says fine and IsoAnimal.update
+            -- throws
+            --
+            --     NullPointerException: Cannot read field "turnDelta"
+            --     because "this.adef" is null   at IsoAnimal.update:458
+            --
+            -- once per frame, forever. 1,135 frames on pztest02 before anyone
+            -- noticed. Lua cannot read a private Java field, but it can poke
+            -- the animal with something that needs one: if a harmless getter
+            -- throws, the instance is broken however good the table looks.
+            -- ⚠️ Only a getter that EXISTS and THROWS counts. Calling a
+            -- method that is simply absent also fails a pcall, and treating
+            -- that as proof of damage flagged four healthy animals in the test
+            -- harness where it should have flagged two. "I could not ask" is
+            -- not "the answer was bad".
+            local broken = false
+            if def then
+                for _, probe in ipairs({ "isBaby", "getStats", "isFemale" }) do
+                    if type(a[probe]) == "function" then
+                        local okp = pcall(function() return a[probe](a) end)
+                        if not okp then broken = true; break end
+                    end
+                end
+            end
+
+            if not def or broken then doomed[#doomed + 1] = a end
         end
     end
 
