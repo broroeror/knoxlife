@@ -212,8 +212,10 @@ Respecting the world dials in your own code:
 
 Useful to know: **group size is population-neutral above the floor.** Routes
 are computed as `density x habitat / meanGroupSize x dials`, so doubling group
-size halves the group count. The exception is the `MIN_ROUTES = 20` per-species
-floor: once a species pins there, the division stops cancelling.
+size halves the group count. The exception is the per-species floor
+(`MIN_ROUTES * realismFraction() * routeScaleFor(id)`, hard-stopped at
+`MIN_FLOOR = 4`): the floor does not divide by group size, so once a species
+pins there the division stops cancelling and bigger groups DO mean more animals.
 
 ---
 
@@ -416,8 +418,10 @@ patch took. The whole contract is in `ADDON.md`.
 - Route legs must share exact vertices (validated at registration since API 1).
 - Per-species option enums: five positions, Normal third.
 - A species in both buckets is planned twice — pick one.
-- `MIN_ROUTES = 20` pins rare species; below ~0.3 combined multiplier the
-  dials stop responding.
+- The floor scales with the dials (`MIN_ROUTES * realismFraction() *
+  routeScaleFor(id)`, never below `MIN_FLOOR = 4`), so rare species stay
+  present *and* still respond to both dials. It was a flat 20 until
+  2026-08-27, which made the dials inert for turkey and bobcat.
 - Base species cannot be suppressed yet; addon species can
   (`removeFromBucket`).
 

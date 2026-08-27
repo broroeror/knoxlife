@@ -50,7 +50,19 @@ KW.DENSITY_SCALE = { 0.25, 0.5, 1.0, 1.5, 2.0 }
 -- works out at four routes for the whole map and is effectively not in the game.
 -- This is the one deliberate distortion, kept in a single visible place rather
 -- than bent into every species' number the way the old sqrt did.
+--
+-- ⚠️ THE FLOOR SCALES WITH THE DIAL. A flat 20 made the dial do NOTHING for the
+-- rarest species: turkey wants 9.7 routes at full density, so across the whole
+-- range (0.25 to 2.0) it wants 2.4 to 19.4 -- every one of them under 20, every
+-- one clamped to 20. Bobcat the same, and coyote too at the lowest setting.
+-- Three species where "Quarter" and "Double" produced an identical world.
+--
+-- Scaling it keeps the guarantee it exists for (a rare animal never vanishes)
+-- while letting the dial mean something in BOTH directions. MIN_FLOOR is the
+-- hard stop underneath: four routes is the number this comment already calls
+-- "effectively not in the game", so nothing is allowed below it.
 KW.MIN_ROUTES = 20
+KW.MIN_FLOOR = 4
 
 -- Multiplier on the DEER density only. Deer are 11.4 per square mile in reality
 -- and the hunting loop is built around them, so this is the honest way to say
@@ -268,7 +280,14 @@ function KW.targetRoutes(id)
     local want = (density * KW.HABITAT_SQ_MI / group)
         * KW.realismFraction() * KW.routeScaleFor(id)
     want = math.floor(want + 0.5)
-    if want < KW.MIN_ROUTES then want = KW.MIN_ROUTES end
+
+    -- The floor moves with the same two dials the target does, so a species
+    -- sitting on it still responds to both. Without this the dial is inert for
+    -- anything rarer than about 20 routes.
+    local floorRoutes = math.floor(
+        (KW.MIN_ROUTES * KW.realismFraction() * KW.routeScaleFor(id)) + 0.5)
+    if floorRoutes < KW.MIN_FLOOR then floorRoutes = KW.MIN_FLOOR end
+    if want < floorRoutes then want = floorRoutes end
     return want
 end
 
