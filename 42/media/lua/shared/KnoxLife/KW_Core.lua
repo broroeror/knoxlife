@@ -175,13 +175,30 @@ end
 -- was quietly debug-only on MP. getAccessLevel() is a string and says what it
 -- means, so read that instead and never mind isAdmin().
 function KW.mayUseAdminTools()
-    if isDebugEnabled and isDebugEnabled() then return true end
+    -- MULTIPLAYER FIRST, and debug does NOT open this door.
+    --
+    -- isDebugEnabled() is a CLIENT-side flag: any player can set it by launching
+    -- the game with -debug. This function used to test it first, which meant
+    -- every player on a server could hand themselves the locator, the planner
+    -- and the map overlay just by changing their own launch options. The admin
+    -- check has to come first or it is not a check.
     if isClient and isClient() then
         local lvl = string.lower(tostring(getAccessLevel and getAccessLevel() or ""))
         return lvl == "admin" or lvl == "moderator"
     end
-    -- Singleplayer or the coop host. Permissive fallback: an existing save has no
-    -- stored value for an option that did not exist when it was created.
+
+    -- SINGLEPLAYER, or the coop host: debug mode only.
+    --
+    -- This reverses an earlier decision that SP should not require -debug. The
+    -- reasoning then was that SP sandbox lives in map_sand.bin and cannot be
+    -- changed on an existing save, so a sandbox toggle was unreachable mid-run
+    -- and the tools would be permanently off for anyone already playing. That is
+    -- all still true -- it is now the intended outcome rather than a problem. An
+    -- arrow pointing at the nearest deer spoils the tracking this mod exists to
+    -- create, so switching it on should be a deliberate act.
+    if not (isDebugEnabled and isDebugEnabled()) then return false end
+
+    -- In debug, the sandbox toggle can still turn them back off.
     if not KW.getOption then return true end
     return KW.getOption("AdminTools", true) and true or false
 end

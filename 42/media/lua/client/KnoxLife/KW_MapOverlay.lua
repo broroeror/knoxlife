@@ -88,6 +88,12 @@ function M.build()
 end
 
 function M.setEnabled(on)
+    -- Defence in depth. The only caller is M.show(), which is reached through
+    -- admin-gated menus -- but this flag arms a wrap that this file installs on
+    -- ISWorldMap.render for EVERY player, admin or not. Refuse to arm it for
+    -- someone who may not use the tools, rather than trust the menus to stay
+    -- gated forever.
+    if on and KW.mayUseAdminTools and not KW.mayUseAdminTools() then return end
     M.enabled = on and true or false
     if M.enabled and not M.points then M.build() end
 end
@@ -314,6 +320,7 @@ end
 --- Open the map with the overlay on. The entry point everything else calls.
 function M.show(playerNum)
     playerNum = playerNum or 0
+    if KW.mayUseAdminTools and not KW.mayUseAdminTools() then return false end
     -- ShowWorldMap returns silently when the sandbox has the map switched off,
     -- which would make this button look broken in exactly the way this whole
     -- session was spent fixing. Say so instead.

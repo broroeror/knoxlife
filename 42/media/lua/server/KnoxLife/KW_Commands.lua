@@ -239,14 +239,21 @@ local function onClientCommand(module, command, player, args)
     -- refused a genuine admin, and the refusal line said "non-admin admin",
     -- which read as nonsense. Fold the case and PRINT THE LEVEL, so the log says
     -- what actually failed instead of needing a code read to find out.
+    -- Fail CLOSED. This used to run the check only `if player and
+    -- player.getAccessLevel`, so a packet that arrived without a usable player
+    -- object skipped the gate entirely and ran the command. An access check that
+    -- can be skipped by malformed input is not an access check.
+    local lvl = ""
     if player and player.getAccessLevel then
-        local lvl = string.lower(tostring(player:getAccessLevel() or ""))
-        if lvl ~= "admin" and lvl ~= "moderator" then
-            print("[KnoxLife] refused spawnJuveniles from "
-                  .. tostring(player:getUsername())
-                  .. " -- access level '" .. lvl .. "'")
-            return
-        end
+        lvl = string.lower(tostring(player:getAccessLevel() or ""))
+    end
+    if lvl ~= "admin" and lvl ~= "moderator" then
+        -- Name the actual command: this said "spawnJuveniles" for all six, so
+        -- the log blamed the wrong one five times out of six.
+        print("[KnoxLife] refused " .. tostring(command) .. " from "
+              .. tostring(player and player.getUsername and player:getUsername() or "?")
+              .. " -- access level '" .. lvl .. "'")
+        return
     end
     if command == "sweep" then
         local n = 0

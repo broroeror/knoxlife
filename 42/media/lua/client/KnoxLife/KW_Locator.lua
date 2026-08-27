@@ -209,17 +209,25 @@ end
 --
 --     isDebugEnabled() or (isClient() and (isAdmin() or moderator))
 --
--- ⚠️ ON BY DEFAULT IN SINGLEPLAYER, and that is a correction rather than a
--- preference. It was gated behind a sandbox option instead, which sounded
--- careful and was unusable: singleplayer sandbox settings live in `map_sand.bin`
--- and cannot be changed on a save that already exists. So the only way in was
--- -debug, which drags the whole vanilla debug menu along with it and covers the
--- screen. Forcing a player into debug mode to reach a menu of your own is not a
--- gate, it is a bug.
+-- ⚠️ 2026-08-27: SINGLEPLAYER NOW REQUIRES -debug, reversing what this comment
+-- used to argue. The old reasoning was that a sandbox toggle is unreachable
+-- mid-save (singleplayer sandbox lives in `map_sand.bin`), so gating on it would
+-- strand anyone already playing, and that forcing a player into debug to reach
+-- your own menu is a bug rather than a gate.
 --
--- Alone, you own the world, and the menu costs one right-click to ignore. Anyone
--- who would rather not know where the deer are can turn Wildlife Admin Tools off
--- on a new save; the tooltip says so plainly.
+-- What that traded away is the point of the mod. An arrow to the nearest deer,
+-- a map of every spawn and a panel of the spawn rates are not neutral
+-- conveniences; they dissolve the tracking this mod exists to create, and they
+-- were ON for every solo player by default, discoverable by right-clicking. The
+-- awkwardness of -debug is now the feature: it makes reaching them deliberate.
+--
+-- Vanilla's own pattern is
+--
+--     isDebugEnabled() or (isClient() and (isAdmin() or moderator))
+--
+-- and note that OR is the wrong way round for a server: isDebugEnabled() is
+-- client-side, so testing it first lets any player self-grant by launching with
+-- -debug. KW.mayUseAdminTools() checks the access level FIRST for that reason.
 local function mayUseTools() return KW.mayUseAdminTools() end
 
 local function onContextMenu(playerIdx, context, worldobjects)
