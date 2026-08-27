@@ -8,7 +8,7 @@
 KnoxLife = KnoxLife or {}
 local KW = KnoxLife
 
-KW.VERSION = "0.2.0"
+KW.VERSION = "1.0.0"
 
 -- Addon contract version. Bumped only for a BREAKING change to the functions
 -- below; additive changes leave it alone. An addon can refuse to load politely:
