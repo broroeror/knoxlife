@@ -101,18 +101,24 @@ function KW.reportJavaState(player)
              .. "options."
     KW.log(msg)
 
-    -- ⚠️ IN-GAME IS THE FALLBACK, NOT THE MESSAGE. KW_MainMenuNotice says this
-    -- properly on the main menu, with the exact path and a copy button. It
-    -- belongs there for two reasons: HaloTextHelper is about a second on screen
-    -- during the busiest moment in the game, and the fix is a LAUNCH OPTION, so
-    -- a player being told mid-run is being told when they cannot act on it.
+    -- ⚠️ SHOW THE SAME PANEL, not halo text. KW_MainMenuNotice tracks "menu"
+    -- and "game" separately and opens at most once for each, so this is a
+    -- second showing rather than a duplicate.
     --
-    -- This still runs if that never appeared -- a mod's Lua running at the main
-    -- menu is not guaranteed forever -- but it must not double up when it did.
-    local onMenu = false
-    pcall(function() onMenu = KW.javaNoticeShown and KW.javaNoticeShown() end)
-    if onMenu then return end
+    -- Both are needed. The main menu is the only place a player can act on a
+    -- LAUNCH OPTION, and on a server it is the only place they will see
+    -- anything at all -- a client that cannot join never reaches here. But our
+    -- Lua is not loaded when the menu first appears (mod Lua loads with the mod
+    -- list), so the menu showing is not guaranteed, while in game we are
+    -- certainly loaded.
+    local panelled = false
+    pcall(function()
+        panelled = KW.showJavaNotice and KW.showJavaNotice("game")
+    end)
+    if panelled then return end
 
+    -- Only reached if the panel could not open at all -- KW_MainMenuNotice
+    -- missing, or the UI classes unavailable. Better than saying nothing.
     if player and HaloTextHelper then
         pcall(function() HaloTextHelper.addBadText(player, "ZombieBuddy installed but not running") end)
     end
