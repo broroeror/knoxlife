@@ -1,6 +1,6 @@
 name=KnoxLife: Wildlife Overhaul
 id=KnoxLife
-description=Rebalances wild animal spawning toward 1990s rural Kentucky: many small family groups instead of a few enormous herds, wild turkey and raccoon added to the world, and farm livestock weighted the way Kentucky farms actually were.
+description=Rebalances wild animal spawning toward 1990s rural Kentucky: many small family groups instead of a few enormous herds, wild turkey and raccoon added to the world, and farm livestock weighted the way Kentucky farms actually were. OPTIONAL: KnoxLife has an extended feature set built on the ZombieBuddy Java agent, arriving in a later update. ZombieBuddy loads through a -javaagent: launch option pointing at its jar -- it does not need copying into your game folder.
 modversion=1.0.0
 versionMin=42.16
 poster=poster.png
