@@ -33,6 +33,21 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class ModActionGroups {
 
+    /**
+     * ⚠️ TWO ROOTS, TWO PREFIXES, AND THEY LOOK THE SAME.
+     *
+     *   getMediaFile(p)          -> new File(workdir, p)   workdir = <game>/media
+     *   walkGameAndModFiles(p)   -> base + p, then for each ACTIVE mod
+     *                               getCommonDir() + p and getVersionDir() + p
+     *
+     * getVersionDir() is <mod>/42 and the files live at
+     * <mod>/42/media/actiongroups, so the walker needs "media/actiongroups"
+     * while ActionGroup itself passes "actiongroups/<name>". Getting this wrong
+     * does not error -- the walk simply visits nothing and reports
+     * "warmed 0 mod action group(s): []", which is what happened first time.
+     */
+    private static final String WALK_ROOT = "media/actiongroups";
+
     /** Groups already merged. getActionGroup is called constantly. */
     private static final Set<String> done = ConcurrentHashMap.newKeySet();
 
@@ -44,18 +59,32 @@ public final class ModActionGroups {
     public static int merges() { return merges; }
     public static String lastError() { return lastError; }
 
-    static void merge(String name, ActionGroup group) {
+    /**
+     * ⚠️ MUST BE PUBLIC. ZombieBuddy's advice is INLINED into the patched
+     * class, so the body of ActionGroupPatch.exit() executes as
+     * zombie.characters.action.ActionGroup -- and anything it calls has to be
+     * reachable from there. Package-private produced:
+     *
+     *   java.lang.IllegalAccessError: class zombie.characters.action.ActionGroup
+     *   tried to access method 'void com.knoxlife.zb.ModActionGroups.merge(...)'
+     *
+     * at runtime only; it compiles perfectly. Same rule for every method an
+     * advice body touches. addState() below can stay private because merge()
+     * is a real call, not inlined.
+     */
+    public static void merge(String name, ActionGroup group) {
         if (name == null || group == null) return;
         if (!done.add(name)) return;
         try {
             // The game's own copy, so it can be skipped: vanilla load() has
             // already read it, and calling ActionState.load twice on the same
             // directory appends its transitions a second time.
-            String rel = "actiongroups/" + name;
-            File gameDir = ZomboidFileSystem.instance.getMediaFile(rel);
+            // getMediaFile is workdir-rooted; the walker is base-rooted. See WALK_ROOT.
+            File gameDir = ZomboidFileSystem.instance.getMediaFile("actiongroups/" + name);
+            String walkPath = WALK_ROOT + "/" + name;
             String gamePath = gameDir == null ? "" : gameDir.getAbsolutePath();
 
-            ZomboidFileSystem.instance.walkGameAndModFiles(rel, false, (file, relPath) -> {
+            ZomboidFileSystem.instance.walkGameAndModFiles(walkPath, false, (file, relPath) -> {
                 try {
                     if (file == null || !file.isDirectory()) return;
                     if (file.getAbsolutePath().startsWith(gamePath)) return;   // vanilla's
@@ -104,7 +133,7 @@ public final class ModActionGroups {
             File gameRoot = ZomboidFileSystem.instance.getMediaFile("actiongroups");
             String gamePath = gameRoot == null ? "" : gameRoot.getAbsolutePath();
             Set<String> names = ConcurrentHashMap.newKeySet();
-            ZomboidFileSystem.instance.walkGameAndModFiles("actiongroups", false, (file, rel) -> {
+            ZomboidFileSystem.instance.walkGameAndModFiles(WALK_ROOT, false, (file, rel) -> {
                 if (file == null || !file.isDirectory()) return;
                 if (file.getAbsolutePath().startsWith(gamePath)) return;
                 File[] kids = file.getName().equals("actiongroups")
