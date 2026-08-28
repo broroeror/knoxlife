@@ -229,8 +229,15 @@ function KW.applyAnimSets()
                    .. " (stays on " .. tostring(e.from) .. "): " .. tostring(why))
         end
     end
-    KW.log(string.format("animsets: %d applied, %d left on their fallback",
-                         ok, refused))
+    -- ⚠️ REPORT THE PLAN SIZE. "0 applied, 0 left" was ambiguous between "the
+    -- plan was empty" and "every flip refused", and on the server it was the
+    -- former -- which points at registration, not at the flip. Two guesses were
+    -- spent on that before the number was simply printed.
+    local groups = 0
+    for _ in pairs(KW.animsets) do groups = groups + 1 end
+    KW.log(string.format(
+        "animsets: %d applied, %d left on their fallback (plan %d from %d group(s))",
+        ok, refused, #plan, groups))
     return ok, refused
 end
 
