@@ -65,10 +65,30 @@ function KW.zombieBuddyJar()
 end
 
 --- The exact thing to paste, or nil if we could not locate the jar.
+---
+--- ⚠️ QUOTE IT WHEN THE PATH HAS A SPACE, which on two of the three platforms
+--- it always does:
+---
+---     Linux    ~/.local/share/Steam/...                    no space
+---     Windows  C:\Program Files (x86)\Steam\...             SPACE
+---     macOS    ~/Library/Application Support/Steam/...     SPACE
+---
+--- Steam parses launch options like a command line, so an unquoted
+--- `-javaagent:C:\Program Files (x86)\...` splits at the space, the JVM never
+--- sees a usable path, the agent never starts, and NOTHING REPORTS AN ERROR --
+--- which is the same silent failure this whole notice exists to prevent. It
+--- looked correct here only because Linux is the one platform without a space
+--- in the default install path.
+---
+--- The whole token is quoted rather than just the path: `-javaagent:"..."`
+--- also works, but quoting the argument entire is what people recognise and
+--- what survives being retyped.
 function KW.javaLaunchOption()
     local jar = KW.zombieBuddyJar()
     if not jar then return nil end
-    return "-javaagent:" .. jar
+    local opt = "-javaagent:" .. jar
+    if opt:find(" ") then opt = '"' .. opt .. '"' end
+    return opt
 end
 
 --- Shorten the middle of a path so a long one still shows both ends.
