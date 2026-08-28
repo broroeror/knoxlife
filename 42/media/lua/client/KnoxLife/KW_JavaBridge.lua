@@ -95,8 +95,10 @@ function KW.reportJavaState(player)
         return
     end
 
-    local msg = "ZombieBuddy is installed but not running, so KnoxLife's "
-             .. "optional animation features are off. Point at its jar with a "
+    -- ⚠️ Says the agent is not running, NOT that starting it enables anything.
+    -- The extras need the KnoxLife Java addon too, and that is unreleased.
+    local msg = "ZombieBuddy is installed but its agent is not running, so "
+             .. "KnoxLife's optional extras are off. Point at its jar with a "
              .. "-javaagent launch option, BEFORE the -- in Steam's launch "
              .. "options."
     KW.log(msg)

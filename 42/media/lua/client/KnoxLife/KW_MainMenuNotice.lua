@@ -129,9 +129,14 @@ end
 local function buildLines(option)
     local L = {
         { t = "KnoxLife", f = UIFont.Medium, c = { 0.85, 0.78, 0.55 } },
-        { t = "ZombieBuddy is installed but not running, so the optional",
+        -- ⚠️ DO NOT say the extras switch on when ZombieBuddy starts. They do
+        -- not: they also need the KnoxLife Java addon, which is not released
+        -- (ADDON.md, STATUS 7l), and every flag in KW_JavaBridge is still
+        -- false. Wording that promises otherwise would be a claim about a
+        -- feature that does not exist.
+        { t = "ZombieBuddy is installed, but its agent is not running.",
           f = UIFont.Small, c = { 0.82, 0.82, 0.82 } },
-        { t = "animation features are off. Everything else works normally.",
+        { t = "Nothing is broken -- KnoxLife's optional extras are simply off.",
           f = UIFont.Small, c = { 0.82, 0.82, 0.82 } },
     }
     if option then
