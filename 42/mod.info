@@ -6,3 +6,6 @@ versionMin=42.16
 poster=poster.png
 icon=icon.png
 url=https://github.com/broroeror/knoxlife
+javaJarFile=media/java/KnoxLife.jar
+javaPkgName=com.knoxlife.zb
+ZBVersionMin=2.3.0

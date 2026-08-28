@@ -51,8 +51,60 @@ end
 
 local ZB = "ZombieBuddy"
 
+--- Turn on exactly the capabilities OUR OWN JAR says it provides.
+---
+--- ⚠️ FAIL CLOSED, AND NOTE WHAT IS BEING ASKED. "ZombieBuddy is running" is
+--- not evidence that anything of ours works -- ZombieBuddy without our plugin
+--- patches nothing (KW_AnimSets says so). So the question is not "is the agent
+--- up" but "did OUR jar load and what does it claim". `KnoxLifeJavaLoaded` is
+--- a global published by com.knoxlife.zb.Main, so its presence proves four
+--- things at once that each fail silently: mod.info declared the jar,
+--- ZombieBuddy found it, javaPkgName matched, and the Lua exposure worked.
+---
+--- The jar reports capabilities as a comma list and ships EMPTY until a patch
+--- has actually been verified, so a loaded jar still turns nothing on by
+--- itself. That is deliberate: the flag must follow the feature, never the
+--- other way round.
+function KW.applyJavaCapabilities()
+    local loaded = false
+    pcall(function()
+        loaded = KnoxLifeJavaLoaded and KnoxLifeJavaLoaded() or false
+    end)
+    if not loaded then return false, {} end
+
+    local caps = ""
+    pcall(function()
+        caps = (KnoxLifeJavaCapabilities and KnoxLifeJavaCapabilities()) or ""
+    end)
+
+    local on = {}
+    for name in tostring(caps):gmatch("[^,%s]+") do
+        -- Only flags this mod actually declares. An unknown name is a version
+        -- mismatch between jar and Lua, and silently inventing a flag for it
+        -- would make javaMissing() stop reporting honestly.
+        if KW.java[name] ~= nil then
+            KW.java[name] = true
+            on[#on + 1] = name
+        else
+            KW.log("java capability '" .. name .. "' is unknown to this build; ignored")
+        end
+    end
+    table.sort(on)
+    KW.log("Java layer live; capabilities on: "
+           .. (#on > 0 and table.concat(on, ", ") or "none yet"))
+    return true, on
+end
+
 --- "active" | "dormant" | "absent"
 function KW.javaState()
+    -- OUR jar loading is the strongest claim available, and the one that
+    -- matters: it means the plugin is live, not merely that the agent is.
+    local ours = false
+    pcall(function()
+        ours = KnoxLifeJavaLoaded and KnoxLifeJavaLoaded() or false
+    end)
+    if ours then return "active" end
+
     -- The agent publishes a global. Nothing else does, so its presence is the
     -- only claim worth trusting that the layer is really running.
     if _G[ZB] ~= nil then return "active" end
