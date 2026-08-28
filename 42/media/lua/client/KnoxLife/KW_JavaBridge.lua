@@ -181,6 +181,26 @@ function KW.reportJavaState(player)
     end
 end
 
+-- ⚠️ ACTUALLY CALL IT. applyJavaCapabilities() shipped defined and uninvoked,
+-- which is the quietest possible bug: the jar loads, the log says so, the
+-- handshake exists, and every flag stays false forever because nothing asks.
+--
+-- Run at load AND on OnGameBoot. The plugin's main() runs before mod Lua (seen
+-- in the log: "Java layer loaded" at line 116, "loading KnoxLife" at 121), so
+-- file scope is normally enough -- but that ordering is ZombieBuddy's to change,
+-- and a retry costs nothing. Guarded so the second call is silent rather than
+-- logging the same line twice.
+local applied = false
+local function applyOnce()
+    if applied then return end
+    local live = KW.applyJavaCapabilities()
+    if live then applied = true end
+end
+applyOnce()
+if Events and Events.OnGameBoot then
+    Events.OnGameBoot.Add(function() pcall(applyOnce) end)
+end
+
 if Events and Events.OnCreatePlayer then
     Events.OnCreatePlayer.Add(function(_, player)
         pcall(KW.reportJavaState, player)
