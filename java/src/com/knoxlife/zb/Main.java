@@ -70,6 +70,23 @@ public class Main {
         return ModActionGroups.warmModGroups();
     }
 
+    /** Repair any action group cached empty before the patch went live. */
+    @LuaMethod(name = "KnoxLifeReloadActionGroups", global = true)
+    public static int reloadActionGroups() {
+        return AnimSets.reloadAll();
+    }
+
+    /** Flip one animal stage onto our action group. False means refused. */
+    @LuaMethod(name = "KnoxLifeApplyAnimSet", global = true)
+    public static boolean applyAnimSet(String stage, String animset) {
+        return AnimSets.apply(stage, animset);
+    }
+
+    @LuaMethod(name = "KnoxLifeAnimSetRefusal", global = true)
+    public static String animSetRefusal() {
+        return AnimSets.lastRefusal();
+    }
+
     /** Diagnostics, so a person can see what the patch did without guessing. */
     @LuaMethod(name = "KnoxLifeActionGroupMerges", global = true)
     public static int actionGroupMerges() {

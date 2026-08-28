@@ -113,6 +113,11 @@ function KW.applyJavaCapabilities()
         KW.log("⚠️ java layer reported an error: " .. tostring(err))
     end
 
+    -- Now that the flags are set, do the work they unlock. This is the only
+    -- place it is safe: KW.animsetsActive() gates on ownAnimSets, which is only
+    -- true because a merge actually happened.
+    if KW.applyAnimSets then pcall(KW.applyAnimSets) end
+
     table.sort(on)
     KW.log("Java layer live; capabilities on: "
            .. (#on > 0 and table.concat(on, ", ") or "none yet"))

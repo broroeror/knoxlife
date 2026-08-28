@@ -187,4 +187,51 @@ function KW.animsetsWithAttack()
     return out
 end
 
+
+--- Step 2 of the addon's job: for each entry in the plan, verify then flip.
+---
+--- ⚠️ THE JAVA SIDE DOES THE VERIFYING, and it refuses rather than trusts. Lua
+--- owns the plan (which stages, which group, what fallback); Java owns the
+--- engine access and the check that the group really carries the states we
+--- shipped. A refused flip leaves that stage animating exactly as it does
+--- today, which is the whole point of the design: partial success is a normal
+--- outcome here, not an error.
+---
+--- Order matters. reloadAll() runs FIRST because of trap 1 in the header:
+--- getActionGroup caches a group before loading it and hands back a non-null
+--- EMPTY group on failure, so anything that asked for `kwc_fox` before the
+--- patch was live poisoned the cache permanently. reloadAll re-runs load() on
+--- every cached group and repairs precisely that.
+function KW.applyAnimSets()
+    if not KW.animsetsActive() then return 0, 0 end
+
+    pcall(function()
+        if KnoxLifeReloadActionGroups then KnoxLifeReloadActionGroups() end
+    end)
+
+    local plan = KW.animsetPlan()
+    local ok, refused = 0, 0
+    for _, e in ipairs(plan) do
+        local applied = false
+        pcall(function()
+            applied = KnoxLifeApplyAnimSet
+                      and KnoxLifeApplyAnimSet(e.stage, e.to) or false
+        end)
+        if applied then
+            ok = ok + 1
+        else
+            refused = refused + 1
+            local why = ""
+            pcall(function()
+                why = (KnoxLifeAnimSetRefusal and KnoxLifeAnimSetRefusal()) or ""
+            end)
+            KW.log("animset refused for " .. tostring(e.stage)
+                   .. " (stays on " .. tostring(e.from) .. "): " .. tostring(why))
+        end
+    end
+    KW.log(string.format("animsets: %d applied, %d left on their fallback",
+                         ok, refused))
+    return ok, refused
+end
+
 return KW.animsets
