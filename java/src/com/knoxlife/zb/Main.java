@@ -44,11 +44,40 @@ public class Main {
 
     /**
      * Which capabilities this build actually provides, as a comma list for
-     * KW_JavaBridge to parse. EMPTY until a patch is verified -- see the
-     * fail-closed note above.
+     * KW_JavaBridge to parse.
+     *
+     * ⚠️ REPORTS WHAT HAS HAPPENED, NOT WHAT IS COMPILED IN. `ownAnimSets`
+     * appears only once a mod action state has actually been merged, because
+     * "the patch class is in the jar" is not evidence it applied -- the class
+     * could fail to match, the method could be renamed by a game update, or the
+     * walk could find nothing. This is the same fail-closed rule KW_AnimSets
+     * states for the Lua side, applied at the source.
      */
     @LuaMethod(name = "KnoxLifeJavaCapabilities", global = true)
     public static String capabilities() {
-        return "";
+        StringBuilder sb = new StringBuilder();
+        if (ModActionGroups.merges() > 0) sb.append("ownAnimSets");
+        return sb.toString();
+    }
+
+    /**
+     * Ask the engine for every mod-supplied action group, exercising the patch.
+     * Lua calls this at OnGameBoot; see ModActionGroups.warmModGroups for why
+     * it is not done in main().
+     */
+    @LuaMethod(name = "KnoxLifeWarmActionGroups", global = true)
+    public static int warmActionGroups() {
+        return ModActionGroups.warmModGroups();
+    }
+
+    /** Diagnostics, so a person can see what the patch did without guessing. */
+    @LuaMethod(name = "KnoxLifeActionGroupMerges", global = true)
+    public static int actionGroupMerges() {
+        return ModActionGroups.merges();
+    }
+
+    @LuaMethod(name = "KnoxLifeJavaLastError", global = true)
+    public static String lastError() {
+        return ModActionGroups.lastError();
     }
 }

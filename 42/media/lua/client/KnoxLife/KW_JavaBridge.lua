@@ -72,6 +72,16 @@ function KW.applyJavaCapabilities()
     end)
     if not loaded then return false, {} end
 
+    -- ⚠️ WARM FIRST, THEN ASK. The jar reports `ownAnimSets` only once it has
+    -- actually merged a mod action state, and nothing requests our groups
+    -- until the animsets are live -- which waits on that very flag. Asking the
+    -- Java side to request the mod groups itself settles the deadlock with
+    -- evidence: if the patch works the merge happens and the capability is
+    -- earned; if it does not, nothing is claimed and the core runs as before.
+    pcall(function()
+        if KnoxLifeWarmActionGroups then KnoxLifeWarmActionGroups() end
+    end)
+
     local caps = ""
     pcall(function()
         caps = (KnoxLifeJavaCapabilities and KnoxLifeJavaCapabilities()) or ""
@@ -89,6 +99,20 @@ function KW.applyJavaCapabilities()
             KW.log("java capability '" .. name .. "' is unknown to this build; ignored")
         end
     end
+    -- Diagnostics the jar exposes, so "it did nothing" and "it errored" are
+    -- distinguishable in the log without attaching a debugger.
+    local merges, err = 0, ""
+    pcall(function()
+        merges = (KnoxLifeActionGroupMerges and KnoxLifeActionGroupMerges()) or 0
+        err = (KnoxLifeJavaLastError and KnoxLifeJavaLastError()) or ""
+    end)
+    if merges > 0 then
+        KW.log("action groups: merged " .. merges .. " mod state(s)")
+    end
+    if err ~= "" then
+        KW.log("⚠️ java layer reported an error: " .. tostring(err))
+    end
+
     table.sort(on)
     KW.log("Java layer live; capabilities on: "
            .. (#on > 0 and table.concat(on, ", ") or "none yet"))
