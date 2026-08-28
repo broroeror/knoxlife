@@ -79,8 +79,27 @@ public final class ModActionGroups {
             // The game's own copy, so it can be skipped: vanilla load() has
             // already read it, and calling ActionState.load twice on the same
             // directory appends its transitions a second time.
-            // getMediaFile is workdir-rooted; the walker is base-rooted. See WALK_ROOT.
+            // ⚠️ NEVER TOUCH A GROUP THE GAME ALREADY OWNS.
+            //
+            // This patch exists so a mod can ship a NEW action group that the
+            // engine would otherwise refuse to find. It must not retrofit
+            // states into a vanilla group: those already load through PZ's own
+            // mod-override path, so merging them AGAIN appends the same
+            // transitions a second time -- ActionState.load appends, it does
+            // not replace.
+            //
+            // Observed: More_Zombie_Death_Animations_B42 ships
+            // media/actiongroups/zombie/falldown/, we merged 2 states into the
+            // vanilla `zombie` group on top of the engine's own load, and every
+            // creature in the game began spamming sounds -- a state machine with
+            // doubled transitions thrashes, and thrashing states retrigger their
+            // audio. Nothing of ours was involved; the damage was to other mods.
             File gameDir = ZomboidFileSystem.instance.getMediaFile("actiongroups/" + name);
+            if (gameDir != null && gameDir.exists()) {
+                System.out.println("[KnoxLife] action group '" + name
+                    + "' is a base-game group; leaving it to the engine");
+                return;
+            }
             String walkPath = WALK_ROOT + "/" + name;
             String gamePath = gameDir == null ? "" : gameDir.getAbsolutePath();
 
@@ -140,7 +159,13 @@ public final class ModActionGroups {
                               ? file.listFiles() : new File[] { file };
                 if (kids == null) return;
                 for (File k : kids) {
-                    if (k != null && k.isDirectory()) names.add(k.getName());
+                    if (k == null || !k.isDirectory()) continue;
+                    // Same rule as merge(): a group the game ships is not ours
+                    // to warm. Requesting it is harmless, merging into it is not.
+                    File own = ZomboidFileSystem.instance
+                                   .getMediaFile("actiongroups/" + k.getName());
+                    if (own != null && own.exists()) continue;
+                    names.add(k.getName());
                 }
             });
             for (String n : names) {

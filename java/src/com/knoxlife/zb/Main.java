@@ -55,8 +55,21 @@ public class Main {
      */
     @LuaMethod(name = "KnoxLifeJavaCapabilities", global = true)
     public static String capabilities() {
+        // ⚠️ ownAnimSets IS WITHHELD ON PURPOSE (2026-08-28). Flipping the
+        // animals onto our own animsets made every creature spam sounds. Two
+        // causes were guessed and neither held: merging into the vanilla
+        // `zombie` group (real, fixed, and not it) and sound events in our own
+        // XML (there are none, in the action states or the AnimSets).
+        //
+        // So the flip is off while the cause is found. The ActionGroup patch
+        // stays on -- it is confirmed, harmless on its own, and keeping it
+        // isolates the variable: with groups merged but animsets on their
+        // vanilla fallback, any remaining spam is NOT the flip.
+        //
+        // Re-enable by restoring the line below. Do not do it before the spam
+        // is explained; a quiet game is worth more than an early feature.
+        //   if (ModActionGroups.merges() > 0) sb.append("ownAnimSets");
         StringBuilder sb = new StringBuilder();
-        if (ModActionGroups.merges() > 0) sb.append("ownAnimSets");
         return sb.toString();
     }
 
