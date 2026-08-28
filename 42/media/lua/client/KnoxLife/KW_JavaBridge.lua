@@ -97,8 +97,22 @@ function KW.reportJavaState(player)
 
     local msg = "ZombieBuddy is installed but not running, so KnoxLife's "
              .. "optional animation features are off. Point at its jar with a "
-             .. "-javaagent launch option."
+             .. "-javaagent launch option, BEFORE the -- in Steam's launch "
+             .. "options."
     KW.log(msg)
+
+    -- ⚠️ IN-GAME IS THE FALLBACK, NOT THE MESSAGE. KW_MainMenuNotice says this
+    -- properly on the main menu, with the exact path and a copy button. It
+    -- belongs there for two reasons: HaloTextHelper is about a second on screen
+    -- during the busiest moment in the game, and the fix is a LAUNCH OPTION, so
+    -- a player being told mid-run is being told when they cannot act on it.
+    --
+    -- This still runs if that never appeared -- a mod's Lua running at the main
+    -- menu is not guaranteed forever -- but it must not double up when it did.
+    local onMenu = false
+    pcall(function() onMenu = KW.javaNoticeShown and KW.javaNoticeShown() end)
+    if onMenu then return end
+
     if player and HaloTextHelper then
         pcall(function() HaloTextHelper.addBadText(player, "ZombieBuddy installed but not running") end)
     end
